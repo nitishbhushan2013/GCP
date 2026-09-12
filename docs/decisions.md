@@ -55,3 +55,25 @@ project yet, so current exposure is zero.
 **Revisit if:** a bastion/jump host or any SSH-accessible VM is introduced —
 at that point, re-scoping this rule to a tag (or better, to specific instance
 names) should be reconsidered as the project matures past "solo demo."
+
+## ADR-004: Cloud SQL + pgvector over Vertex AI Vector Search
+
+**Date:** Epic 6 (AI Layer)
+**Decision:** Implement vector search using the `pgvector` extension on the existing
+Cloud SQL PostgreSQL instance, rather than deploying a Vertex AI Vector Search index.
+**Why:** Vertex AI Vector Search requires a continuously-deployed index endpoint
+that bills hourly regardless of query volume — the same category of always-on cost
+problem GKE presented (see ADR-002). `pgvector` on the existing, already-provisioned
+Cloud SQL instance adds vector search with zero additional idle cost, and combined
+with Postgres's native full-text search enables the same BM25 + dense vector hybrid
+approach used in BudgetSense's original AWS design (Aurora + pgvector) — a closer
+architectural match than Vertex AI Vector Search would have been anyway.
+**Tradeoff:** PRD Story 6.3 was originally written naming "Vertex AI vector search
+index" specifically. This is a deliberate deviation from that literal wording,
+made for cost reasons; the Story's underlying intent (a working vector index over
+document chunks) is still met. Also: `pgvector` on a small Cloud SQL tier won't
+scale to the size/performance a dedicated Vertex AI Vector Search deployment could
+handle — acceptable for a portfolio-scale document set, would need revisiting at
+real production scale.
+**Revisit if:** the document corpus grows large enough that `pgvector` performance
+on a small Cloud SQL instance becomes a genuine bottleneck.
