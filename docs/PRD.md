@@ -116,7 +116,7 @@ end-to-end, with no secrets in code or images.
 
 ---
 
-### Epic 4: Observability & Monitoring ⬜ Backlog
+### Epic 4: Observability & Monitoring ✅ Done
 
 **Goal:** The system's health and security posture are visible, not just assumed.
 
