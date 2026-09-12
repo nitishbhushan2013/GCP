@@ -191,23 +191,32 @@ Organization Policies applied at the project (or folder, if one exists) level:
 - `constraints/compute.vmExternalIpAccess` / equivalent Cloud SQL public-IP
   restriction, enforced as policy rather than relying on per-resource convention
 
-### 6.3 Applied AI — RAG Layer (Epic 6, backlog)
+### 6.3 Applied AI — RAG Layer (Epic 6, in progress)
+
+**Hierarchical (parent-child) chunking**, not flat chunking:
 
 ```mermaid
-graph LR
-    Docs["Budget policy documents"] -->|upload| GCS["Cloud Storage"]
-    GCS -->|parse| DocAI["Document AI"]
-    DocAI -->|chunks| VertexIdx["Vertex AI<br/>Vector Search index"]
-    Query["User question<br/>(via /query)"] -->|embed + search| VertexIdx
-    VertexIdx -->|retrieved chunks| Gemini["Gemini<br/>(grounded generation)"]
-    Gemini -->|cited answer| Response["/query response"]
+graph TB
+    PDF["Source PDF<br/>(Cloud Storage)"] --> DocAI["Document AI<br/>(OCR)"]
+    DocAI --> Section["Parent Section<br/>~1,500-2,500 tokens<br/>(stored, not embedded)"]
+    Section --> Chunk1["Child Chunk 1<br/>~150-250 tokens<br/>(embedded)"]
+    Section --> Chunk2["Child Chunk 2<br/>~150-250 tokens<br/>(embedded)"]
+    Section --> Chunk3["Child Chunk 3<br/>~150-250 tokens<br/>(embedded)"]
+
+    Query["User question"] -->|"vector + full-text search"| Chunk2
+    Chunk2 -->|"matched \u2192 look up parent"| Section
+    Section -->|"full context"| Gemini["Gemini<br/>(generation)"]
+    Chunk2 -->|"precise citation<br/>(page, source)"| Gemini
 ```
 
-This mirrors [[budgetsense-ai]]'s AWS architecture (Bedrock/Claude + pgvector hybrid
-search) using GCP-native equivalents — the explicit "same problem, ported cloud"
-story referenced in the Project Brief.
+Search happens on small, precise **child chunks** (good for matching). Generation
+happens on their larger **parent section** (good for context) — this avoids the
+common RAG failure mode where a matched chunk is too small to generate a complete,
+well-grounded answer from, while keeping citations precise to the exact page/passage
+that was actually matched. See ADR-005 for the full rationale.
 
----
+Embedding model: Vertex AI `text-embedding-005`, 768 dimensions, `RETRIEVAL_DOCUMENT`
+task type at ingestion, `RETRIEVAL_QUERY` at query time.
 
 ## 7. Cross-Cutting Decisions (index into `docs/decisions.md`)
 

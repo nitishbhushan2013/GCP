@@ -77,3 +77,22 @@ handle — acceptable for a portfolio-scale document set, would need revisiting 
 real production scale.
 **Revisit if:** the document corpus grows large enough that `pgvector` performance
 on a small Cloud SQL instance becomes a genuine bottleneck.
+
+## ADR-005: Hierarchical (parent-child) chunking over flat chunking
+
+**Date:** Epic 6 (AI Layer), before ingestion pipeline built
+**Decision:** Store two levels per document: small "child" chunks (~150-250 tokens)
+that get embedded and searched, and larger "parent" sections (~1,500-2,500 tokens)
+that are stored as plain text and retrieved for generation once a child chunk
+matches.
+**Why:** Flat chunking forces a tradeoff that hurts one side no matter which way
+you tune it: small chunks match precisely but often lack enough surrounding
+context for Gemini to generate a complete, well-grounded answer; large chunks
+generate well but match imprecisely, since the embedding represents several
+unrelated ideas at once. Hierarchical chunking gets both: precise matching via
+small chunks, complete context via their parent section.
+**Tradeoff:** More complex schema (two tables instead of one) and an extra lookup
+per retrieval (child match \u2192 parent fetch). Considered acceptable given the
+schema change costs nothing at this stage (built before any data was ingested).
+**Revisit if:** the extra join/lookup becomes a measurable latency problem at a
+scale this project isn't expected to reach.
