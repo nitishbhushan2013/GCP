@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft → Implementing (manual, via Console)
+Done
 
 ## 1. Problem
 

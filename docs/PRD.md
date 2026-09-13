@@ -14,8 +14,7 @@
 
 ## 1. Product Vision
 
-A live, demoable, security-conscious GCP system — a rebuild of BudgetSense (hybrid
-RAG over Australian Federal Budget policy) — that serves as verifiable, auditable
+A live, demoable, security-conscious GCP system that serves as verifiable, auditable
 evidence of hands-on GCP capability.
 The product is not the RAG feature alone; it is the **entire, defensible system**:
 network, identity, workload, observability, governance, and AI, each built
@@ -31,8 +30,7 @@ deliberately and each explainable under technical questioning.
 >
 > 1. Retrieves the most relevant, most authoritative source documents using a
 >    custom RAG pipeline with hybrid search and authority-tier weighting
-> 2. Reasons across multiple sources using a ReAct agent loop
-> 3. Answers with full citations, source URLs, and a trust badge indicating how
+> 2. Answers with full citations, source URLs, and a trust badge indicating how
 >    verified the answer is
 
 Epic 6 (§4) currently scopes a simpler first slice of this vision (ingest → search
@@ -122,9 +120,9 @@ end-to-end, with no secrets in code or images.
 
 | Story                              | Acceptance Criteria                                                                                                    | Status |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------ |
-| 4.1 Cloud Monitoring dashboard     | A dashboard showing Cloud Run request count/latency/error rate and Cloud SQL connection count                          | ⬜     |
-| 4.2 Log-based alert                | At least one alert policy (e.g. 5xx rate spike, or `/health` returning `unhealthy`) wired to a notification channel    | ⬜     |
-| 4.3 Security Command Center review | Findings reviewed at least once; any actionable finding triaged and either fixed or explicitly accepted with rationale | ⬜     |
+| 4.1 Cloud Monitoring dashboard     | A dashboard showing Cloud Run request count/latency/error rate and Cloud SQL connection count                          | ✅     |
+| 4.2 Log-based alert                | At least one alert policy (e.g. 5xx rate spike, or `/health` returning `unhealthy`) wired to a notification channel    | ✅     |
+| 4.3 Security Command Center review | Findings reviewed at least once; any actionable finding triaged and either fixed or explicitly accepted with rationale | ✅     |
 
 ---
 
@@ -147,8 +145,8 @@ services.
 
 | Story                   | Acceptance Criteria                                                                     | Status |
 | ----------------------- | --------------------------------------------------------------------------------------- | ------ |
-| 6.1 Document ingestion  | Source budget policy documents stored in Cloud Storage                                  | ⬜     |
-| 6.2 Document parsing    | Document AI extracts text/structure from ingested documents                             | ⬜     |
+| 6.1 Document ingestion  | Source budget policy documents stored in Cloud Storage                                  | ✅     |
+| 6.2 Document parsing    | Document AI extracts text/structure from ingested documents                             | ✅     |
 | 6.3 Vector index        | Vertex AI vector search index built over parsed document chunks                         | ⬜     |
 | 6.4 Grounded generation | Gemini generates answers constrained to retrieved chunks, with citations back to source | ⬜     |
 | 6.5 `/query` endpoint   | New Cloud Run endpoint accepting a question, returning a grounded, cited answer         | ⬜     |

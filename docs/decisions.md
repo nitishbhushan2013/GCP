@@ -96,3 +96,48 @@ per retrieval (child match \u2192 parent fetch). Considered acceptable given the
 schema change costs nothing at this stage (built before any data was ingested).
 **Revisit if:** the extra join/lookup becomes a measurable latency problem at a
 scale this project isn't expected to reach.
+
+## ADR-006: Document AI Processor Region Exception
+
+**Status:** Accepted
+**Date:** 2026-09-13
+**Context:** Epic 6 — AI Layer
+
+### Decision
+
+The Document AI OCR processor (`budgetsense-ocr`, ID `1bd3e26847822f34`) was created
+in region `us` rather than `australia-southeast1`.
+
+### Context
+
+The project's default data-residency posture (established in Epic 5 governance work)
+restricts resources to Australian regions. Document AI's OCR processor type is not
+available in `australia-southeast1` at time of writing — only a subset of regions
+(`us`, `eu`) support it for this processor type.
+
+### Options considered
+
+1. **Use `us` region for this processor only** — accepted
+2. Skip Document AI entirely, use a different OCR/parsing approach that runs in-region
+3. Wait for Google to add `australia-southeast1` support
+
+### Rationale
+
+This is a portfolio/demo project processing publicly available Federal Budget PDFs —
+not sensitive or classified data — so a regional exception carries no real compliance
+risk here. Options 2 and 3 would have added significant complexity or blocked progress
+for no material benefit. The exception is scoped narrowly: only the Document AI
+processor sits outside `australia-southeast1`; all other resources (Cloud Storage,
+Cloud SQL, Cloud Run) remain in-region.
+
+### Consequences
+
+- This deviation is called out explicitly rather than left implicit, so it can be
+  defended in review (e.g. "why isn't everything in-region?").
+- In a real production/Defence context, this would require either an approved
+  exception process or a different OCR solution — noted here as the real-world
+  caveat to this decision.
+
+### Related
+
+- ADR-005 (hierarchical chunking) — same epic, same ingestion pipeline

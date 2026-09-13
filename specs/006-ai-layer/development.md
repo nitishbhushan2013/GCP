@@ -15,19 +15,19 @@ Status legend: ⬜ Not started · 🔄 In progress · ✅ Done
 - [✅] A4. Enable `pgvector` extension on `budgetsense-db` (`CREATE EXTENSION vector;`)
 - [✅] A5. Create `document_sections` and `document_chunks` tables (hierarchical, per ADR-005)
 - [✅] A6. Create vector (ivfflat) and full-text (GIN) indexes on `document_chunks`
-- [⬜] A7. Create Document AI processor (`budgetsense-ocr`, Document OCR type, region `us`)
-- [⬜] A8. Copy the Processor ID for use in ingestion code
-- [⬜] A9. Grant `budgetsense-run-sa` → Document AI API User (`roles/documentai.apiUser`)
-- [⬜] A10. Grant `budgetsense-run-sa` → Vertex AI User (`roles/aiplatform.user`)
+- [✅] A7. Create Document AI processor (`budgetsense-ocr`, Document OCR type, region `us`)
+- [✅] A8. Copy the Processor ID for use in ingestion code
+- [✅] A9. Grant `budgetsense-run-sa` → Document AI API User (`roles/documentai.apiUser`)
+- [✅] A10. Grant `budgetsense-run-sa` → Vertex AI User (`roles/aiplatform.user`)
 
 ## Phase B — Ingestion Pipeline (code)
 
-- [⬜] B1. Write script: read each PDF from Cloud Storage
-- [⬜] B2. Write script: send each PDF to Document AI, get parsed text back
-- [⬜] B3. Write parent-section splitting logic (~1,500-2,500 tokens per section, page-aware)
-- [⬜] B4. Write child-chunk splitting logic within each section (~150-250 tokens, with overlap)
-- [⬜] B5. Assign `authority_tier` per source document (BP1/BP2 = highest tier, Overview = summary tier)
-- [⬜] B6. Write embedding generation call (Vertex AI `text-embedding-005`, `RETRIEVAL_DOCUMENT` task type, confirm 768-dim output)
+- [✅]] B1. Write script: read each PDF from Cloud Storage
+- [✅] B2. Write script: send each PDF to Document AI, get parsed text back
+- [✅] B3. Write parent-section splitting logic (~1,500-2,500 tokens per section, page-aware)
+- [✅] B4. Write child-chunk splitting logic within each section (~150-250 tokens, with overlap)
+- [✅] B5. Assign `authority_tier` per source document (BP1/BP2 = highest tier, Overview = summary tier)
+- [✅ B6. Write embedding generation call (Vertex AI `text-embedding-005`, `RETRIEVAL_DOCUMENT` task type, confirm 768-dim output)
 - [⬜] B7. Write insert logic: parent section → `document_sections`, then its child chunks (with `section_id`, embedding, metadata) → `document_chunks`
 - [⬜] B8. Run the full ingestion script against all 3 PDFs
 - [⬜] B9. Verify row counts and spot-check a few sections/chunks directly in Cloud SQL Studio

@@ -11,20 +11,7 @@ context (security, auditability, data residency).
 It is a fresh, GCP-native design that solves the same problem — hybrid retrieval-augmented Q&A over budget policy
 documents — using GCP's equivalent and idiomatic services.
 
-## 2. Background
-
-The original BudgetSense runs on AWS (Aurora PostgreSQL + pgvector, ElastiCache Redis,
-Bedrock/Claude, Spring Boot on EKS, Next.js, Terraform) using hybrid search (BM25 +
-dense vector + RRF) with authority-tier score weighting. BudgetSense-GCP reuses the same
-problem domain and product intent, but is architected around GCP-native primitives.
-
-## 3. Deliverable
-
-A live, demoable, end-to-end application that a technical reviewer can:
-
-- **Open and use**: ask a budget-policy question, get a grounded, cited answer.
-- **Inspect**: read the architecture and see _why_ each decision was made.
-- **Audit**: review the full build history on GitHub, spec by spec, commit by commit.
+## 2. Deliverable
 
 The deliverable is evaluated against five capability pillars:
 
@@ -75,4 +62,3 @@ Workflow per spec:
 - [ ] Architecture diagram exists and matches deployed reality
 - [ ] Every phase has a corresponding spec in `/specs/` and a matching implementation commit
 - [ ] No secrets in git history; no public IP on the database
-- [ ] Reviewer can trace any design decision back to its spec
