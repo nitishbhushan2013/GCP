@@ -35,7 +35,4 @@ src/            Application code (API, frontend, ingestion pipeline)
 | Governance | Organization Policies (data residency, public-IP restrictions) |
 | AI/ML | Vertex AI, Document AI, Gemini |
 
-## Related Project
 
-This is a GCP-native rebuild of the original AWS-based BudgetSense (Aurora +
-pgvector, Bedrock/Claude, EKS). See `docs/project-brief.md` §2 for background.
