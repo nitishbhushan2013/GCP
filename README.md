@@ -1,6 +1,6 @@
 # BudgetSense-GCP
 
-A GCP-native rebuild of BudgetSense — a hybrid RAG platform for querying Australian
+A GCP-native hybrid RAG platform for querying Australian
 Federal Budget policy — built as a portfolio project demonstrating secure,
 production-grade Google Cloud architecture (compute, networking, identity,
 observability, governance, and Vertex AI).
