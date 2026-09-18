@@ -29,4 +29,20 @@ if __name__ == "__main__":
 
         cur.execute("SELECT COUNT(*) FROM document_chunks;")
         print("document_chunks row count:", cur.fetchone()[0])
+
+        cur.execute("""
+        SELECT source_document, COUNT(*) 
+        FROM document_sections 
+        GROUP BY source_document;
+        """)
+        for row in cur.fetchall():
+            print(row)
+
+        cur.execute("""
+            SELECT source_document, COUNT(*) 
+            FROM document_chunks 
+            GROUP BY source_document;
+        """)
+        for row in cur.fetchall():
+          print(row)
     conn.close()
