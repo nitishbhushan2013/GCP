@@ -28,13 +28,13 @@ Status legend: ⬜ Not started · 🔄 In progress · ✅ Done
 - [✅] B4. Write child-chunk splitting logic within each section (~150-250 tokens, with overlap)
 - [✅] B5. Assign `authority_tier` per source document (BP1/BP2 = highest tier, Overview = summary tier)
 - [✅ B6. Write embedding generation call (Vertex AI `text-embedding-005`, `RETRIEVAL_DOCUMENT` task type, confirm 768-dim output)
-- [⬜] B7. Write insert logic: parent section → `document_sections`, then its child chunks (with `section_id`, embedding, metadata) → `document_chunks`
-- [⬜] B8. Run the full ingestion script against all 3 PDFs
-- [⬜] B9. Verify row counts and spot-check a few sections/chunks directly in Cloud SQL Studio
+- [✅] B7. Write insert logic: parent section → `document_sections`, then its child chunks (with `section_id`, embedding, metadata) → `document_chunks`
+- [✅] B8. Run the full ingestion script against all 3 PDFs
+- [✅ B9. Verify row counts and spot-check a few sections/chunks directly in Cloud SQL Studio
 
 ## Phase C — Hybrid Retrieval (code)
 
-- [⬜] C1. Write vector similarity query over `document_chunks` (cosine distance via `embedding <=> query_embedding`, `RETRIEVAL_QUERY` task type for the question's embedding)
+- [✅] C1. Write vector similarity query over `document_chunks` (cosine distance via `embedding <=> query_embedding`, `RETRIEVAL_QUERY` task type for the question's embedding)
 - [⬜] C2. Write full-text search query (`search_vector @@ plainto_tsquery(...)`)
 - [⬜] C3. Combine both via Reciprocal Rank Fusion (RRF)
 - [⬜] C4. Apply `authority_tier` as a ranking boost (not a hard filter)
