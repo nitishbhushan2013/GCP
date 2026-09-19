@@ -1,13 +1,16 @@
 import os
 import psycopg
 from retrieval import embed_query, vector_search, full_text_search, rrf_fuse, apply_authority_boost, fetch_parent_sections
+from generation import generate_answer
 
 conn = psycopg.connect(
     host="127.0.0.1", port=5433,
     dbname="budgetsense", user="budgetsense_app", password=os.environ["DB_PASSWORD"],
 )
 
+
 question = "What is the WATO tax offset amount?"
+#question = "I run a café with $800K turnover. What Budget measures can help my cash flow right now?"
 query_vec = embed_query(question)
 
 print("--- Vector search ---")
@@ -50,5 +53,8 @@ parents = fetch_parent_sections(conn, boosted)
 for section_id, source_doc, page, tier, section_text in parents:
     print(f"Section {section_id}: {source_doc} p.{page} ({tier})")
     print(f"  {section_text[:200]}...\n")
+
+answer = generate_answer(question, parents)
+print(f"\n--- Generated Answer ---\n{answer}")
 
 conn.close()

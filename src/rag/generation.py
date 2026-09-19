@@ -1,3 +1,7 @@
+from google import genai
+from google.genai.types import GenerateContentConfig
+
+
 PROMPT_TEMPLATE = """You are answering questions about the Australian Federal Budget using ONLY the source material provided below. Do not use any outside knowledge, 
 even if you know the answer from elsewhere.
 
@@ -23,3 +27,18 @@ def build_prompt(question: str, parent_sections: list) -> str:
         )
     context = "\n\n".join(context_blocks)
     return PROMPT_TEMPLATE.format(context=context, question=question)
+
+"""
+temperature=0.0 — Zero temperature makes output as deterministic and literal as possible, minimizing the model's tendency to paraphrase loosely 
+                or fill gaps with plausible-sounding but unsupported detail. It brings the model's output closer to a strict extraction from the provided context, 
+                        which is crucial for factual accuracy in this task.
+"""
+def generate_answer(question: str, parent_sections: list) -> str:
+    prompt = build_prompt(question, parent_sections)
+    client = genai.Client(vertexai=True, project="budgetsense-gcp-prod", location="us-central1")
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=GenerateContentConfig(temperature=0.0),
+    )
+    return response.text
