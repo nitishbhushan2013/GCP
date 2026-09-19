@@ -1,7 +1,7 @@
 import os
 import psycopg
 from retrieval import embed_query, vector_search, full_text_search, rrf_fuse, apply_authority_boost, fetch_parent_sections
-from generation import generate_answer
+from generation import generate_answer, parse_response
 
 conn = psycopg.connect(
     host="127.0.0.1", port=5433,
@@ -54,7 +54,13 @@ for section_id, source_doc, page, tier, section_text in parents:
     print(f"Section {section_id}: {source_doc} p.{page} ({tier})")
     print(f"  {section_text[:200]}...\n")
 
+
 answer = generate_answer(question, parents)
-print(f"\n--- Generated Answer ---\n{answer}")
+parsed = parse_response(answer, parents)
+print(f"\n--- Parsed ---")
+print(f"Answer: {parsed['answer']}")
+print(f"Citations: {parsed['citations']}")
+print(f"Not found flag: {parsed['not_found']}")
+
 
 conn.close()

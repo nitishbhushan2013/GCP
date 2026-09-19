@@ -42,3 +42,35 @@ def generate_answer(question: str, parent_sections: list) -> str:
         config=GenerateContentConfig(temperature=0.0),
     )
     return response.text
+
+import re
+
+def parse_response(raw_answer: str, parent_sections: list) -> dict:
+    citation_pattern = r"\[Source (\d+),?\s*p\.(\d+)\]"
+    matches = re.findall(citation_pattern, raw_answer)
+
+# cited_source_nums deduplicates and sorts — if Gemini cites Source 1 twice in one answer, we don't want it listed twice in the structured output.
+    cited_source_nums = sorted(set(int(num) for num, _ in matches))
+
+    citations = []
+    for num in cited_source_nums:
+        idx = num - 1
+        if 0 <= idx < len(parent_sections):
+            section_id, source_doc, page, tier, _ = parent_sections[idx]
+            citations.append({
+                "source_document": source_doc,
+                "page_number": page,
+                "authority_tier": tier,
+            })
+
+    clean_answer = re.sub(citation_pattern, "", raw_answer)
+    clean_answer = re.sub(r"[,\s]+([.,])", r"\1", clean_answer)  # collapse leftover commas/spaces before punctuation
+    clean_answer = re.sub(r"\s{2,}", " ", clean_answer).strip()  # collapse any double-spaces left behind
+
+    not_found = "not found in the provided budget documents" in raw_answer.lower()
+
+    return {
+        "answer": clean_answer,
+        "citations": citations,
+        "not_found": not_found,
+    }
