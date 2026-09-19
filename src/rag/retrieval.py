@@ -58,6 +58,42 @@ def full_text_search(conn, question: str, top_k: int = 10):
         cur.execute(sql, (tsquery_str, tsquery_str, top_k))
         return cur.fetchall()
 
+"""
+RRF is meant to produce: a chunk that both search methods independently agree on (even if neither ranks it #1) 
+beats a chunk that one method loves but the other never sees. It's rewarding consensus over 
+any single method's confidence.
+
+The idea: take each result list, use rank position (1st, 2nd, 3rd...) 
+this sidesteps the fact that cosine distance (lower=better) and 
+ts_rank (higher=better) aren't on comparable scales. Each chunk's 
+final score is the sum of 1/(k+rank) across whichever lists it appears in,
+ where k (typically 60) dampens the effect of rank 1 vs rank 2 so it's not overly extreme.
+
+ chunks[chunk_id] = row gets overwritten if a chunk appears in both lists — harmless, since the row data itself is
+   identical either way, only the rank (and thus score contribution) differs per list.
+A chunk appearing in both lists naturally accumulates a higher combined score than one appearing in only one — \
+    that's RRF's core benefit, without us writing any special-case logic for it.
+k=60 is the standard default from the original RRF paper — dampens rank-1-vs-rank-2 swings so one search 
+method doesn't totally dominate just by narrowly edging out a rank position.
+
+"""
+def rrf_fuse(vector_results, fulltext_results, k: int = 60, top_k: int = 10):
+    scores = {}
+    chunks = {}
+
+    for rank, row in enumerate(vector_results, start=1):
+        chunk_id = row[0]
+        chunks[chunk_id] = row
+        scores[chunk_id] = scores.get(chunk_id, 0) + 1 / (k + rank)
+
+    for rank, row in enumerate(fulltext_results, start=1):
+        chunk_id = row[0]
+        chunks[chunk_id] = row
+        scores[chunk_id] = scores.get(chunk_id, 0) + 1 / (k + rank)
+
+    ranked_ids = sorted(scores, key=scores.get, reverse=True)[:top_k]
+    return [(chunks[cid], scores[cid]) for cid in ranked_ids]
+
 
 """
 Sure — walking through build_or_query step by step, since that's the new/confusing part:

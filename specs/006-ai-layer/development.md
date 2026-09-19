@@ -35,8 +35,8 @@ Status legend: ⬜ Not started · 🔄 In progress · ✅ Done
 ## Phase C — Hybrid Retrieval (code)
 
 - [✅] C1. Write vector similarity query over `document_chunks` (cosine distance via `embedding <=> query_embedding`, `RETRIEVAL_QUERY` task type for the question's embedding)
-- [⬜] C2. Write full-text search query (`search_vector @@ plainto_tsquery(...)`)
-- [⬜] C3. Combine both via Reciprocal Rank Fusion (RRF)
+- [✅] C2. Write full-text search query (`search_vector @@ plainto_tsquery(...)`)
+- [✅] C3. Combine both via Reciprocal Rank Fusion (RRF)
 - [⬜] C4. Apply `authority_tier` as a ranking boost (not a hard filter)
 - [⬜] C5. Write parent lookup: matched chunk → fetch its `document_sections` row via `section_id`
 - [⬜] C6. Manually test retrieval against the 5 known test questions — confirm sensible chunks AND correct parent sections return before touching generation
@@ -70,4 +70,4 @@ Status legend: ⬜ Not started · 🔄 In progress · ✅ Done
 
 ---
 
-**Where we are right now: Phase A, step A7** — creating the Document AI processor.
+**Where we are right now: Phase C, step C4** — apply authority_tier as a ranking boost.
