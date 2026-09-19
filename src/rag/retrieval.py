@@ -94,37 +94,18 @@ def rrf_fuse(vector_results, fulltext_results, k: int = 60, top_k: int = 10):
     ranked_ids = sorted(scores, key=scores.get, reverse=True)[:top_k]
     return [(chunks[cid], scores[cid]) for cid in ranked_ids]
 
+TIER_WEIGHTS = {
+    "primary": 1.0,
+    "summary": 0.85,
+}
 
-"""
-Sure — walking through build_or_query step by step, since that's the new/confusing part:
+def apply_authority_boost(fused_results, weights: dict = TIER_WEIGHTS):
+    boosted = []
+    for row, score in fused_results:
+        tier = row[5]  # authority_tier column position in the row tuple
+        weight = weights.get(tier, 1.0)
+        boosted.append((row, score * weight))
+    boosted.sort(key=lambda x: x[1], reverse=True)
+    return boosted
 
-The problem it solves: we need to turn a natural question into a Postgres tsquery (Postgres's search-term format), using the exact same rules Postgres already used when it built search_vector — otherwise the two sides won't line up.
 
-Step 1:
-
-python
-cur.execute("SELECT to_tsvector('english', %s)::text", (question,))
-tsvector_str = cur.fetchone()[0]
-
-We hand the question itself to Postgres's to_tsvector('english', ...) — the same function that processed every chunk during ingestion. It strips stopwords ("what", "is", "the"), stems words to their root form ("offset" stays "offset", but something like "running" would become "run"), and returns them as a tsvector.
-
-For "What is the WATO tax offset amount?" this returns something like:
-
-'amount':6 'offset':5 'tax':4 'wato':2
-
-That's Postgres's own answer to "these are the meaningful search terms, stemmed and de-stopworded."
-
-Step 2:
-
-python
-lexemes = re.findall(r"'([^']+)'", tsvector_str)
-
-That string is text, not a Python list — so this pulls out just the words between quotes (amount, offset, tax, wato), throwing away the position numbers we don't need.
-
-Step 3:
-
-python
-return ' | '.join(lexemes)
-
-Joins them with | (OR) into wato | tax | offset | amount — a valid to_tsquery string meaning "match any chunk containing at least one of these terms."
-"""

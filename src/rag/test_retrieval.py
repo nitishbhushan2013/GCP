@@ -1,6 +1,6 @@
 import os
 import psycopg
-from retrieval import embed_query, vector_search, full_text_search, rrf_fuse
+from retrieval import embed_query, vector_search, full_text_search, rrf_fuse, apply_authority_boost
 
 conn = psycopg.connect(
     host="127.0.0.1", port=5433,
@@ -31,6 +31,15 @@ for row in ft_results:
 print("--- RRF Fused ---")
 fused = rrf_fuse(results, ft_results, top_k=5)
 for row, score in fused:
+    chunk_id, section_id, chunk_text, source_doc, page, tier, _ = row
+    print(f"[{score:.5f}] {source_doc} p.{page} ({tier})")
+    print(f"  {chunk_text[:150]}...\n")
+
+
+
+print("--- Authority-boosted ---")
+boosted = apply_authority_boost(fused)
+for row, score in boosted:
     chunk_id, section_id, chunk_text, source_doc, page, tier, _ = row
     print(f"[{score:.5f}] {source_doc} p.{page} ({tier})")
     print(f"  {chunk_text[:150]}...\n")
