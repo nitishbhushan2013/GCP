@@ -2,17 +2,19 @@ import os
 import logging
 from datetime import datetime, timezone
 
-import psycopg2
+import psycopg
 from fastapi import FastAPI, Response
+from pydantic import BaseModel
+
+from rag.retrieval import retrieve
+from rag.generation import generate_answer, parse_response
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("budgetsense")
 
-app = FastAPI(title="BudgetSense-GCP Health Check")
+app = FastAPI(title="BudgetSense-GCP")
 
-# Cloud Run injects these as env vars, each mapped to a Secret Manager secret
-# (db-host, db-name, db-user, db-password) — never hardcoded, never in a .env
-# file that gets built into the image.
 DB_HOST = os.environ.get("DB_HOST")
 DB_NAME = os.environ.get("DB_NAME")
 DB_USER = os.environ.get("DB_USER")
@@ -22,12 +24,11 @@ DB_PORT = os.environ.get("DB_PORT", "5432")
 
 def get_connection():
     """
-    Connects to Cloud SQL over its private IP. This only works because Cloud
-    Run has the Serverless VPC Access connector (budgetsense-connector)
-    attached, routing traffic into the private subnet where Cloud SQL lives.
-    No public IP is involved anywhere in this path.
+    Connects to Cloud SQL over its private IP via the Serverless VPC Access
+    connector. Uses psycopg v3 (not psycopg2) - standardized project-wide
+    after psycopg2-binary failed to build a wheel on Python 3.14.
     """
-    return psycopg2.connect(
+    return psycopg.connect(
         host=DB_HOST,
         port=DB_PORT,
         dbname=DB_NAME,
@@ -75,3 +76,25 @@ def health(response: Response):
         response.status_code = 503
 
     return result
+
+class QueryRequest(BaseModel):
+    question: str
+
+
+@app.post("/query")
+def query(request: QueryRequest):
+    """
+    Grounded Q&A over Federal Budget documents. Retrieval (hybrid vector +
+    full-text search, RRF-fused, authority-boosted) finds the relevant
+    parent sections; Gemini generates an answer constrained to only that
+    retrieved text, with citations traced back to specific sources.
+    """
+    conn = get_connection()
+    try:
+        boosted, parents = retrieve(conn, request.question, top_k=5)
+        raw_answer = generate_answer(request.question, parents)
+        parsed = parse_response(raw_answer, parents)
+    finally:
+        conn.close()
+
+    return parsed

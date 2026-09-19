@@ -38,19 +38,19 @@ Status legend: ⬜ Not started · 🔄 In progress · ✅ Done
 - [✅] C2. Write full-text search query (`search_vector @@ plainto_tsquery(...)`)
 - [✅] C3. Combine both via Reciprocal Rank Fusion (RRF)
 - [✅] C4. Apply `authority_tier` as a ranking boost (not a hard filter)
-- [⬜] C5. Write parent lookup: matched chunk → fetch its `document_sections` row via `section_id`
-- [⬜] C6. Manually test retrieval against the 5 known test questions — confirm sensible chunks AND correct parent sections return before touching generation
+- [✅] C5. Write parent lookup: matched chunk → fetch its `document_sections` row via `section_id`
+- [✅] C6. Manually test retrieval against the 5 known test questions — confirm sensible chunks AND correct parent sections return before touching generation
 
 ## Phase D — Grounded Generation (code)
 
-- [⬜] D1. Write Gemini prompt template: answer only from retrieved parent section(s), cite the specific child chunk/page, say "not found" if no good match
-- [⬜] D2. Wire retrieved parent section(s) + question into the Gemini call
-- [⬜] D3. Parse Gemini's response into: answer text + citation list (source doc, page, authority tier)
+- [✅] D1. Write Gemini prompt template: answer only from retrieved parent section(s), cite the specific child chunk/page, say "not found" if no good match
+- [✅] D2. Wire retrieved parent section(s) + question into the Gemini call
+- [✅] D3. Parse Gemini's response into: answer text + citation list (source doc, page, authority tier)
 
 ## Phase E — Endpoint & Deployment
 
-- [⬜] E1. Add `POST /query` endpoint to `src/main.py`
-- [⬜] E2. Wire endpoint: question in → retrieval (Phase C) → generation (Phase D) → response out
+- [✅] E1. Add `POST /query` endpoint to `src/main.py`
+- [✅] E2. Wire endpoint: question in → retrieval (Phase C) → generation (Phase D) → response out
 - [⬜] E3. Build and push new Docker image to Artifact Registry (new tag, e.g. `:v2`)
 - [⬜] E4. Deploy new Cloud Run revision with the updated image
 
@@ -70,4 +70,4 @@ Status legend: ⬜ Not started · 🔄 In progress · ✅ Done
 
 ---
 
-**Where we are right now: Phase C, step C5** — parent lookup: matched chunk → fetch its document_sections row via section_id.
+**Where we are right now: Phase E, step E3** — build and push new Docker image to Artifact Registry.
