@@ -109,3 +109,27 @@ def apply_authority_boost(fused_results, weights: dict = TIER_WEIGHTS):
     return boosted
 
 
+def fetch_parent_sections(conn, boosted_results):
+    section_ids = []
+    seen = set()
+    for row, score in boosted_results:
+        section_id = row[1]
+        if section_id not in seen:
+            seen.add(section_id)
+            section_ids.append(section_id)
+
+    sql = """
+        SELECT id, source_document, page_number, authority_tier, section_text
+        FROM document_sections
+        WHERE id = ANY(%s);
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, (section_ids,))
+        rows = cur.fetchall()
+
+    sections_by_id = {row[0]: row for row in rows}
+    # preserve original ranking order, not the DB's arbitrary return order
+    return [sections_by_id[sid] for sid in section_ids if sid in sections_by_id]
+
+
+
