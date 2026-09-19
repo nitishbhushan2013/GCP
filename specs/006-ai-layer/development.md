@@ -51,8 +51,8 @@ Status legend: ⬜ Not started · 🔄 In progress · ✅ Done
 
 - [✅] E1. Add `POST /query` endpoint to `src/main.py`
 - [✅] E2. Wire endpoint: question in → retrieval (Phase C) → generation (Phase D) → response out
-- [⬜] E3. Build and push new Docker image to Artifact Registry (new tag, e.g. `:v2`)
-- [⬜] E4. Deploy new Cloud Run revision with the updated image
+- [✅] E3. Build and push new Docker image to Artifact Registry (new tag, e.g. `:v2`)
+- [✅] E4. Deploy new Cloud Run revision with the updated image
 
 ## Phase F — Verification (per Spec 006 acceptance criteria)
 
@@ -70,4 +70,4 @@ Status legend: ⬜ Not started · 🔄 In progress · ✅ Done
 
 ---
 
-**Where we are right now: Phase E, step E3** — build and push new Docker image to Artifact Registry.
+**Phase E complete. Where we are right now: Phase F, step F1** — run all 5 test questions against the live /query endpoint.

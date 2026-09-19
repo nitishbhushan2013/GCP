@@ -28,7 +28,9 @@ Ranked, since they occasionally trade off against each other:
    _learning_ choice, not a permanent one (see ADR-001).
 
 Where goals conflict (e.g. Epic 1's untagged firewall rules trade some blast-radius
-control for operational simplicity — ADR-003), the tradeoff is documented, not hidden.
+control for operational simplicity — ADR-003, or Epic 7's public Cloud Run access
+trades goal #3 for reviewer reachability — ADR-008), the tradeoff is documented, not
+hidden.
 
 ---
 
@@ -36,17 +38,17 @@ control for operational simplicity — ADR-003), the tradeoff is documented, not
 
 ```mermaid
 graph TB
-    Reviewer["Technical Reviewer<br/>(interview demo)"]
+    Reviewer["Technical Reviewer<br/>(public web UI, any time)"]
     Internet["Public Internet"]
-    CloudRun["Cloud Run<br/>budgetsense-app-v1<br/>(Python/FastAPI)"]
+    CloudRun["Cloud Run<br/>budgetsense-app-v1<br/>(Python/FastAPI + static UI)"]
     CloudSQL["Cloud SQL<br/>PostgreSQL<br/>(private IP only)"]
     SecretMgr["Secret Manager<br/>(4 scoped secrets)"]
     ArtifactReg["Artifact Registry<br/>(Docker images)"]
     VPC["VPC: budgetsense-vpc<br/>public + private subnets"]
     GitHub["GitHub Repo<br/>(audit trail: specs, ADRs, runbooks)"]
 
-    Reviewer -->|"HTTPS request"| Internet
-    Internet -->|"/health, /query"| CloudRun
+    Reviewer -->|"HTTPS, unauthenticated<br/>(ADR-008)"| Internet
+    Internet -->|"/, /health, /query"| CloudRun
     CloudRun -->|"private IP,<br/>via VPC connector"| CloudSQL
     CloudRun -->|"secretAccessor<br/>(scoped)"| SecretMgr
     CloudRun -.->|"pulls image at deploy"| ArtifactReg
@@ -60,7 +62,9 @@ graph TB
 
 **Key property visible in this diagram:** Cloud SQL has no path to/from the public
 internet at all. The _only_ way to reach it is through Cloud Run, through the VPC
-connector, over a private IP.
+connector, over a private IP. The Cloud Run service itself, by contrast, is
+deliberately public (ADR-008) — the security boundary in this system sits at the
+database and network layer, not at the application's front door.
 
 ---
 
@@ -130,6 +134,12 @@ graph LR
 project-wide IAM binding review have not yet been performed. This is the weakest
 part of the current build and the next priority before claiming Epic 2 "Done."
 
+**Note (Epic 7):** the workload identity model above governs what the _service_
+can do (DB access, secrets). It is unrelated to and unaffected by ADR-008, which
+governs who can _invoke_ the service over HTTP. The service account's own
+permissions remain unchanged and still least-privilege-scoped regardless of the
+service being publicly invokable.
+
 ---
 
 ## 5. Application Workload Architecture (Epic 3)
@@ -149,9 +159,12 @@ sequenceDiagram
     CR-->>R: {"status":"healthy",<br/>"db_connected":true,...}
 ```
 
-**Container:** Python 3.12-slim, FastAPI + Uvicorn, `psycopg2-binary` for a direct
+**Container:** Python 3.12-slim, FastAPI + Uvicorn, `psycopg` v3 for a direct
 private-IP Postgres connection (no Cloud SQL Auth Proxy needed, since private
-networking is already established at the VPC layer).
+networking is already established at the VPC layer). Originally built with
+`psycopg2-binary`; migrated to `psycopg` v3 during Epic 6/7 to standardize on
+one driver project-wide after `psycopg2-binary` failed to build a wheel on
+Python 3.14 in local development.
 
 **Scale-to-zero:** `min-instances=0`. No cost while idle — the defining cost
 constraint for this whole project (ADR-002).
@@ -171,7 +184,7 @@ constraint for this whole project (ADR-002).
 
 ## 6. Target Architecture — Remaining Epics
 
-### 6.1 Observability (Epic 4, backlog)
+### 6.1 Observability (Epic 4, done)
 
 ```mermaid
 graph LR
@@ -191,7 +204,7 @@ Organization Policies applied at the project (or folder, if one exists) level:
 - `constraints/compute.vmExternalIpAccess` / equivalent Cloud SQL public-IP
   restriction, enforced as policy rather than relying on per-resource convention
 
-### 6.3 Applied AI — RAG Layer (Epic 6, in progress)
+### 6.3 Applied AI — RAG Layer (Epic 6, Phases A–E complete, Phase F pending)
 
 **Hierarchical (parent-child) chunking**, not flat chunking:
 
@@ -204,44 +217,97 @@ graph TB
     Section --> Chunk3["Child Chunk 3<br/>~150-250 tokens<br/>(embedded)"]
 
     Query["User question"] -->|"vector + full-text search"| Chunk2
-    Chunk2 -->|"matched \u2192 look up parent"| Section
+    Chunk2 -->|"matched → look up parent"| Section
     Section -->|"full context"| Gemini["Gemini<br/>(generation)"]
     Chunk2 -->|"precise citation<br/>(page, source)"| Gemini
 ```
 
-Search happens on small, precise **child chunks** (good for matching). Generation
-happens on their larger **parent section** (good for context) — this avoids the
-common RAG failure mode where a matched chunk is too small to generate a complete,
-well-grounded answer from, while keeping citations precise to the exact page/passage
-that was actually matched. See ADR-005 for the full rationale.
+**Retrieval (Phase C, done):** hybrid search combines pgvector cosine-distance
+search and Postgres full-text search via Reciprocal Rank Fusion (rank-position
+based, not raw score — the two signals aren't on comparable scales), with an
+authority-tier soft boost (primary vs. summary sources) applied after fusion,
+not as a hard filter.
+
+**Generation (Phase D, done):** Gemini answers only from retrieved parent
+sections, with an explicit instruction to ignore outside/training knowledge and
+a required exact refusal phrase for no-match cases. Citations are extracted via
+regex against a prompt-enforced `[Source N, p.X]` format rather than requesting
+JSON output directly from the model.
+
+**Endpoint (Phase E, done):** `POST /query` on the existing `budgetsense-app-v1`
+Cloud Run service, reusing the same DB connection and secret-resolution pattern
+as `/health` — no new identity or networking surface.
+
+**Known limitations, found during testing and deliberately scoped out rather
+than fixed in this Epic:**
+
+- Table-heavy source pages (e.g. a Defence payment-measures table) can produce
+  chunks containing a relevant keyword without the associated figure —
+  fragmented tabular content is a known weak point of the current chunking
+  approach on narrative-oriented parsing.
+- Vector-distance alone is not a clean "not found" signal — a real question's
+  distance (~0.37) was observed close to a negative-control question's distance
+  (~0.41). Gemini's own groundedness judgment on retrieved text is the primary
+  "not found" mechanism; distance is a soft supporting signal only.
+- A single confirmed instance of a page-number metadata mismatch (stored value
+  vs. the PDF's own printed page label) was found during manual citation
+  checking; cause unconfirmed (possibly a front-matter offset in Document AI's
+  page indexing), deferred to Phase F for proper investigation with more
+  samples.
 
 Embedding model: Vertex AI `text-embedding-005`, 768 dimensions, `RETRIEVAL_DOCUMENT`
 task type at ingestion, `RETRIEVAL_QUERY` at query time.
 
+### 6.4 Frontend (Epic 7, in progress)
+
+```mermaid
+graph LR
+    Browser["Anyone with the URL<br/>(public, ADR-008)"] -->|"GET /"| CloudRun["Cloud Run<br/>budgetsense-app-v1"]
+    CloudRun -->|"serves static/index.html"| Browser
+    Browser -->|"POST /query<br/>(fetch)"| CloudRun
+    CloudRun -->|"JSON: answer, citations"| Browser
+```
+
+No new GCP resources (ADR-007). The existing FastAPI app gains a `StaticFiles`
+mount serving one self-contained HTML/CSS/JS file, which calls the
+already-existing `/query` endpoint client-side via `fetch()`. Same-origin
+requests (UI and API on the same Cloud Run domain) avoid any CORS
+configuration entirely.
+
+The service is deliberately public and unauthenticated (ADR-008) — a
+reviewer can open the URL at any time without a live session or credential
+exchange with the project owner, which is the whole point of building a UI
+in the first place (see `docs/project-brief.md` §2, "independently
+accessible").
+
+---
+
 ## 7. Cross-Cutting Decisions (index into `docs/decisions.md`)
 
-| ADR     | Decision                                  | Epic |
-| ------- | ----------------------------------------- | ---- |
-| ADR-001 | Manual Console build before Terraform     | 1    |
-| ADR-002 | Cloud Run over GKE (cost-driven)          | 3    |
-| ADR-003 | Untagged (broadly-applied) firewall rules | 1    |
-
-Future architectural decisions (e.g. how Epic 6's vector index is structured, or
-whether Epic 5's policies apply project- or folder-wide) will be added here as
-ADR-004+ when made.
+| ADR     | Decision                                              | Epic |
+| ------- | ----------------------------------------------------- | ---- |
+| ADR-001 | Manual Console build before Terraform                 | 1    |
+| ADR-002 | Cloud Run over GKE (cost-driven)                      | 3    |
+| ADR-003 | Untagged (broadly-applied) firewall rules             | 1    |
+| ADR-004 | Cloud SQL + pgvector over Vertex AI Vector Search     | 6    |
+| ADR-005 | Hierarchical (parent-child) chunking                  | 6    |
+| ADR-006 | Document AI processor region exception (`us`)         | 6    |
+| ADR-007 | Serve demo UI from Cloud Run, not a separate GCS site | 7    |
+| ADR-008 | Public unauthenticated access to Cloud Run            | 7    |
 
 ---
 
 ## 8. Non-Functional Requirements Summary
 
-| Requirement                      | Current Status                                                                                                     |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| $0 idle cost                     | ✅ Cloud Run min-instances=0; no GKE cluster fee                                                                   |
-| Data residency (AU regions only) | 🟡 Convention-enforced (all resources manually placed in `australia-southeast1`); NOT yet policy-enforced (Epic 5) |
-| No public database access        | ✅ Cloud SQL private-IP only                                                                                       |
-| No secrets in code/images        | ✅ All 4 DB credentials via Secret Manager                                                                         |
-| Least-privilege identity         | 🟡 Workload SA is scoped correctly; full IAM audit not yet performed (Epic 2)                                      |
-| IaC-managed foundation           | ✅ Epic 1 fully Terraform-imported and drift-free                                                                  |
+| Requirement                      | Current Status                                                                                                                                             |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| $0 idle cost                     | ✅ Cloud Run min-instances=0; no GKE cluster fee; no new resources for Epic 7 (ADR-007)                                                                    |
+| Data residency (AU regions only) | 🟡 Convention-enforced (all resources manually placed in `australia-southeast1`, except ADR-006's Document AI exception); NOT yet policy-enforced (Epic 5) |
+| No public database access        | ✅ Cloud SQL private-IP only                                                                                                                               |
+| No secrets in code/images        | ✅ All 4 DB credentials via Secret Manager                                                                                                                 |
+| Least-privilege identity         | 🟡 Workload SA is scoped correctly; full IAM audit not yet performed (Epic 2)                                                                              |
+| IaC-managed foundation           | ✅ Epic 1 fully Terraform-imported and drift-free                                                                                                          |
+| Public UI reachability           | 🟡 Deliberately public (ADR-008) — trades the least-privilege goal for demo reachability, not accidental exposure                                          |
 
 ## 9. Target End-State Architecture (Reference)
 

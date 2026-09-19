@@ -23,6 +23,10 @@ The deliverable is evaluated against five capability pillars:
 | Compliance & governance   | Organization Policies enforcing AU data residency           |
 | Applied AI                | Working RAG pipeline with grounded, citation-backed answers |
 
+The deliverable must also be **independently accessible** —anyone can open a URL
+on their own schedule and interact with the system directly, without a live session or
+credential exchange with the project owner (see ADR-008 in `docs/decisions.md`).
+
 ## 4. Methodology
 
 Built using **Spec-Driven Development (SDD)**: every capability is defined as a written
@@ -43,10 +47,16 @@ Workflow per spec:
 1. **Foundation** — GCP project setup, VPC (public/private subnets), firewall rules
 2. **Identity** — custom least-privilege IAM roles, Cloud Audit Logs
 3. **Workload** — API + frontend on Cloud Run (private), Cloud SQL, Secret Manager
+   _(Note: frontend was deferred out of Phase 3/Epic 3's initial build — API-only
+   shipped first to prove the private-networking path end-to-end. Delivered later
+   as Epic 7, once Epic 6's RAG API existed to give the frontend something
+   meaningful to call.)_
 4. **Monitoring** — Cloud Monitoring dashboards, Cloud Logging sinks, Security Command Center
 5. **Governance** — Organization Policies (block public IPs, restrict region to `australia-southeast1`)
 6. **AI Layer** — RAG pipeline: Cloud Storage (source docs) → Document AI (parsing) →
    Vertex AI (vector index / search) → Gemini (generation), fronted by Cloud Run
+7. **Web UI** — a public-facing demo interface over the Epic 6 API, deployed on the
+   existing Cloud Run service with no new infrastructure (see `docs/PRD.md` Epic 7)
 
 ## 6. Out of scope (for now)
 
@@ -54,11 +64,16 @@ Workflow per spec:
 - CI/CD pipeline hardening beyond a basic Cloud Build trigger
 - Load testing / performance benchmarking
 - Cost optimization pass
+- Abuse-prevention controls on the public UI (rate limiting, API keys) beyond what's
+  noted as a future revisit trigger in ADR-008
 
 ## 7. Success Criteria
 
-- [ ] Application is deployed and reachable
-- [ ] A budget-policy question produces a grounded, cited answer
+- [x] Application is deployed and reachable
+- [x] A budget-policy question produces a grounded, cited answer
+- [ ] A reviewer can interact with the system through a browser, not just curl/Postman,
+      at any time, without a live session with the project owner (Epic 7, pending
+      local + production verification)
 - [ ] Architecture diagram exists and matches deployed reality
-- [ ] Every phase has a corresponding spec in `/specs/` and a matching implementation commit
-- [ ] No secrets in git history; no public IP on the database
+- [x] Every phase has a corresponding spec in `/specs/` and a matching implementation commit
+- [x] No secrets in git history; no public IP on the database

@@ -141,3 +141,57 @@ Cloud SQL, Cloud Run) remain in-region.
 ### Related
 
 - ADR-005 (hierarchical chunking) — same epic, same ingestion pipeline
+
+## ADR-007: Serve the demo UI from Cloud Run, not a separate GCS static site
+
+**Date:** Epic 7 (Web UI)
+**Decision:** Serve the UI as static files mounted directly on the existing
+`budgetsense-app-v1` Cloud Run service, rather than provisioning a separate
+Cloud Storage static website bucket.
+**Why:** Zero new cost, zero new IAM surface, zero new resource to explain or
+secure — consistent with this project's cost and least-privilege goals
+(architecture.md §1). A second hosting mechanism would also mean two deploy
+paths and two places CORS/access could go wrong, for a purely cosmetic
+UI addition. Same-origin serving (UI and API on the same domain) also means
+no CORS configuration is needed at all.
+**Tradeoff:** Doesn't demonstrate GCS static hosting as a distinct GCP skill.
+Considered acceptable since Epic 1-6 already demonstrate substantially more
+GCP breadth (VPC, IAM, Cloud SQL, Document AI, Vertex AI, Monitoring) than
+one more storage pattern would add.
+**Revisit if:** the UI needs to scale independently of the API, or a specific
+interview signals GCS/CDN static-hosting experience is a hard requirement.
+
+## ADR-008: Public unauthenticated access to the Cloud Run service
+
+**Date:** Epic 7 (Web UI)
+**Decision:** Grant `allUsers` the `roles/run.invoker` role on `budgetsense-app-v1`,
+allowing anyone with the URL to use the UI and `/query` endpoint without
+authentication, at any time — not just during a live, supervised demo session.
+**Why:** The point of Epic 7's UI is to let a reviewer explore the system on
+their own schedule, not only when the project owner is present to grant
+access or share a token. A private, IAM-gated Cloud Run service would defeat
+that purpose — a reviewer with a URL but no invoker permission just sees a 403.
+**Verified:** `gcloud run services get-iam-policy` initially showed an empty
+policy (no explicit bindings), despite the service already being reachable
+without auth — indicating public access was originally granted via the
+`--allow-unauthenticated` deploy-time flag rather than an explicit IAM
+binding. Added `allUsers`/`roles/run.invoker` explicitly so the grant is
+visible directly in the IAM policy, not just inferred from deploy history.
+**Tradeoff:** This is a direct, acknowledged trade against this project's own
+architectural goal #3 (least privilege by default — architecture.md §1). Two
+real consequences: (1) anyone who obtains the URL can query it, including
+triggering billed Gemini API calls, not just Cloud Run's own compute; (2) no
+usage attribution — a log entry doesn't distinguish a genuine reviewer from
+anyone else who found the link.
+**Mitigations considered, not implemented:** Cloud Armor rate limiting, or a
+lightweight shared token, would reduce abuse risk but add infrastructure and
+complexity disproportionate to a single-reviewer-facing portfolio demo (see
+project-brief.md §6, "cost optimization pass" already out of scope). Accepted
+as-is for now.
+**Revisit if:** the URL is shared broadly beyond intended reviewers, or
+unexpected Gemini API cost appears in billing — at that point, a Cloud Armor
+rate-limit rule or an API key check on `/query` would be the first fix to add.
+**Related:** Data itself carries low risk regardless of access — all ingested
+documents (Budget Papers) are already public Australian Government
+publications, not sensitive or classified data (same reasoning as ADR-006's
+data-residency exception).
