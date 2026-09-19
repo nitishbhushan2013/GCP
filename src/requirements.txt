@@ -1,8 +1,5 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
-psycopg2-binary==2.9.9
-google-cloud-documentai == 0.6.0
-google-cloud-storage == 2.10.0
-google-cloud-aiplatform==2.19.0
-google-genai==0.1.0
-pydantic ==2.10.9
+psycopg[binary]==3.2.3
+google-genai==2.23.0
+pydantic==2.13.5
