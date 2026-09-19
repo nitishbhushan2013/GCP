@@ -132,4 +132,12 @@ def fetch_parent_sections(conn, boosted_results):
     return [sections_by_id[sid] for sid in section_ids if sid in sections_by_id]
 
 
+def retrieve(conn, question: str, top_k: int = 5):
+    query_vec = embed_query(question)
+    vector_results = vector_search(conn, query_vec, top_k=top_k)
+    ft_results = full_text_search(conn, question, top_k=top_k)
+    fused = rrf_fuse(vector_results, ft_results, top_k=top_k)
+    boosted = apply_authority_boost(fused)
+    parents = fetch_parent_sections(conn, boosted)
+    return boosted, parents
 
