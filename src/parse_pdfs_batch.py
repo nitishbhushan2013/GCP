@@ -94,6 +94,13 @@ def _read_batch_output() -> dict[str, list[documentai.Document]]:
     }
 
 
+def load_existing_batch_output() -> dict[str, list[documentai.Document]]:
+    """Read whatever's already sitting in docai-output/ without submitting
+    a new batch job. Use this to reuse a previously-completed run instead
+    of reprocessing (which would delete the existing output and resubmit)."""
+    return _read_batch_output()
+
+
 # parse_pdfs_batch.py
 if __name__ == "__main__":
     extracted = batch_process_pdfs()

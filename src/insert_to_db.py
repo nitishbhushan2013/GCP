@@ -5,11 +5,15 @@ Epic 6 / Phase B / B7 — Insert parent sections and child chunks into Cloud SQL
 import os
 import psycopg
 
-from parse_pdfs_batch import batch_process_pdfs
+#from parse_pdfs_batch import batch_process_pdfs
+from parse_pdfs_batch import load_existing_batch_output
 from test_parent_sections import extract_page_texts, build_parent_sections
 from split_child_chunks import split_into_child_chunks
 from embed_chunks import embed_chunks
 from authority_tiers import get_authority_tier
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DB_HOST = "127.0.0.1"  # Cloud SQL Auth Proxy tunnel — local dev only
 DB_PORT = 5433
@@ -77,7 +81,7 @@ def insert_document(conn, source_name: str, shards: list) -> None:
 
 
 if __name__ == "__main__":
-    documents = batch_process_pdfs()
+    documents = load_existing_batch_output()
 
     conn = psycopg.connect(
         host=DB_HOST, port=DB_PORT, dbname=DB_NAME,

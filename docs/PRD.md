@@ -238,3 +238,30 @@ The full vision adds three capabilities beyond current scope:
 If/when this becomes committed scope, it should be written up as new Stories
 (or a new Epic 8) with proper acceptance criteria — deliberately not done here,
 to keep this section descriptive rather than prescriptive.
+
+### Epic 8: Multi-Hop Agentic Retrieval (ReAct) ⬜ Backlog
+
+**Goal:** Answer compound, multi-topic citizen questions correctly — the kind
+PRD §2's own personas actually ask (a trust holder asking what changes AND
+when to act; a family asking about combined tax relief) — by reasoning about
+what's actually being asked, retrieving for each distinct need separately,
+and synthesizing one grounded answer, rather than forcing one embedding to
+represent several topics at once.
+
+**Scope note:** This formally retires Epic 6 `spec.md` §3's non-goal "no
+ReAct agent loop, no multi-step reasoning" and promotes §7's "Extended
+Vision" ReAct capability from reference-only to committed scope. Driven by
+a real, observed failure: a compound question ("what changes for our
+20-year discretionary trust, and when do we act") produced weak retrieval
+(vector distance ~0.42-0.46, roughly double a clean single-topic match) and
+a correct-but-unhelpful "not found" response — a single embedding of a
+multi-topic question represents none of its topics well (see ADR-010).
+
+| Story                                | Acceptance Criteria                                                                                                                                       | Status |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 8.1 Question decomposition           | A compound question is broken into 1-4 focused, factual (never advice-framed) sub-questions                                                               | ⬜     |
+| 8.2 Multi-hop retrieval              | Each sub-question runs through the existing Phase C retrieval pipeline independently; results deduped by section                                          | ⬜     |
+| 8.3 Sufficiency check & re-query     | If gathered context doesn't cover the question, the agent generates and retrieves one additional targeted sub-question, bounded to prevent infinite loops | ⬜     |
+| 8.4 Synthesized generation           | One answer synthesized across all gathered sections, with citations spanning multiple sub-questions' sources                                              | ⬜     |
+| 8.5 No regression on single-topic Qs | The original 5 single-fact test questions still resolve in effectively one hop, same quality as before                                                    | ⬜     |
+| 8.6 Endpoint parity                  | `/query`'s external contract (`answer`, `citations`, `not_found`) is unchanged — this is an internal upgrade                                              | ⬜     |

@@ -282,6 +282,29 @@ accessible").
 
 ---
 
+### 6.5 Multi-Hop Agentic Retrieval (Epic 8, backlog)
+
+```mermaid
+graph TB
+    Q["User question"] --> Decompose["Decompose<br/>(Gemini: 1-4 factual sub-questions)"]
+    Decompose --> R1["Retrieve<br/>sub-question 1"]
+    Decompose --> R2["Retrieve<br/>sub-question 2"]
+    Decompose --> RN["Retrieve<br/>sub-question N"]
+    R1 --> Dedupe["Dedupe sections<br/>by section_id"]
+    R2 --> Dedupe
+    RN --> Dedupe
+    Dedupe --> Check{"Sufficient?"}
+    Check -->|"no, bounded retry"| Gap["Generate + retrieve<br/>one gap sub-question"]
+    Gap --> Dedupe
+    Check -->|"yes"| Synth["Synthesize<br/>one answer, multi-source citations"]
+```
+
+Each retrieval hop reuses Phase C's existing `retrieve()` pipeline
+unchanged (vector + full-text + RRF + authority boost + parent lookup) —
+Epic 8 adds a reasoning layer _around_ Phase C, it does not modify it.
+Decomposition and synthesis are new Gemini calls (Phase D's `generate_answer`
+pattern extended, not replaced). See ADR-010.
+
 ## 7. Cross-Cutting Decisions (index into `docs/decisions.md`)
 
 | ADR     | Decision                                              | Epic |
@@ -294,6 +317,7 @@ accessible").
 | ADR-006 | Document AI processor region exception (`us`)         | 6    |
 | ADR-007 | Serve demo UI from Cloud Run, not a separate GCS site | 7    |
 | ADR-008 | Public unauthenticated access to Cloud Run            | 7    |
+| ADR-010 | Multi-hop ReAct-style retrieval over single-pass RAG  | 8    |
 
 ---
 

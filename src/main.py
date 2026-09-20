@@ -1,19 +1,30 @@
 import os
 import logging
 from datetime import datetime, timezone
-
+from dotenv import load_dotenv
 import psycopg
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
 from rag.retrieval import retrieve
 from rag.generation import generate_answer, parse_response
+from fastapi.staticfiles import StaticFiles
+
+
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("budgetsense")
 
 app = FastAPI(title="BudgetSense-GCP")
+
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+@app.get("/", include_in_schema=False)
+def serve_ui():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/index.html")
+
+load_dotenv()
 
 DB_HOST = os.environ.get("DB_HOST")
 DB_NAME = os.environ.get("DB_NAME")

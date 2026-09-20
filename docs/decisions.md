@@ -195,3 +195,66 @@ rate-limit rule or an API key check on `/query` would be the first fix to add.
 documents (Budget Papers) are already public Australian Government
 publications, not sensitive or classified data (same reasoning as ADR-006's
 data-residency exception).
+
+## ADR-009: Dedicated public bucket for source PDFs, separate from the ingestion bucket
+
+**Date:** Epic 7 (Web UI)
+**Decision:** Create a new bucket, `budgetsense-gcp-prod-docs-public`, holding
+copies of source Budget PDFs with `allUsers`/`roles/storage.objectViewer`
+granted at the bucket level. The original ingestion bucket
+(`budgetsense-gcp-prod-docs`) remains private and unchanged.
+**Why:** Citations are only meaningfully verifiable if a reviewer can click
+through to the actual source page — that's the entire point of building a
+citation system in the first place. The existing docs bucket has uniform
+bucket-level access enabled (ADR from Phase B's A3 fix), so IAM can only be
+granted bucket-wide, not per-object; making that bucket public would also
+expose `docai-output/` (Document AI's parsed JSON), which is harmless data
+but unnecessary exposure. A separate, purpose-built public bucket keeps the
+exposure scoped to exactly the 3 files that need it.
+**Tradeoff:** A second bucket to maintain, and any future re-ingestion (a
+new PDF added, or the existing 3 re-processed) now needs a corresponding
+copy step into the public bucket, or citations for it will 404. Considered
+acceptable given the copy is a single `gcloud storage cp` command, not a
+recurring burden at this project's scale.
+**Data risk:** Minimal — these are already-public Australian Government
+Budget Paper publications (same reasoning as ADR-006), not sensitive or
+classified data.
+**Related risk:** the citation's `#page=N` fragment links directly to a
+PDF page number sourced from stored `page_number` metadata. Phase D's
+testing found one confirmed instance where that stored value didn't match
+the PDF's own printed page label (ADR/finding noted in architecture.md
+§6.3). This was a background data-quality note when citations were
+plain text; it becomes a user-facing risk now that citations are clickable
+links — a wrong page number sends a reviewer to the wrong page. Deferred
+to Phase F investigation as already planned, but its priority increases
+now that citations link out.
+**Revisit if:** more source documents are added regularly enough that the
+manual copy step becomes a real burden — at that point, wiring an
+automatic copy into the Phase B ingestion script would be worth doing.
+
+## ADR-010: Multi-hop ReAct-style retrieval over single-pass RAG
+
+**Date:** Epic 8
+**Decision:** Replace `/query`'s single embed→retrieve→generate pass with a
+bounded reasoning loop: decompose the question into factual sub-questions,
+retrieve independently per sub-question, check sufficiency, optionally
+retrieve once more for a gap, then synthesize one answer across everything
+gathered.
+**Why:** A single embedding cannot represent a multi-topic question well —
+observed directly: a compound trust/family question produced vector
+distances of 0.42-0.46, roughly double a clean single-topic match (~0.21),
+and a correct-but-unhelpful refusal rather than a wrong answer. This is a
+structural limitation of single-pass RAG on compound input, not fixable by
+raising top_k (more results ranked by the same diluted vector is not more
+signal).
+**Tradeoff:** Real cost and latency increase — a compound question now
+costs 1 decomposition call + N retrieval passes + up to 1 re-query + 1
+synthesis call, versus 1 retrieval + 1 generation call before. A simple
+question ("WATO amount") should still resolve in effectively one hop
+(PRD Story 8.5), so the cost increase should be concentrated on genuinely
+compound questions, not uniform across all traffic.
+**Revisit if:** latency becomes unacceptable for the demo UI's loading-state
+expectations, or Gemini API cost from repeated calls per question becomes
+material (relevant given ADR-008's public, unauthenticated access — more
+reason to bound iteration count strictly).
+**Related:** PRD Epic 8, retires Epic 6 spec.md §3's ReAct non-goal.

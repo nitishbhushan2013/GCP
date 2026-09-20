@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BudgetSense</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --navy: #10263b;
+        --paper: #f1ece1;
+        --brass: #b8935b;
+        --ink: #14202b;
+        --ink-soft: #4a5561;
+        --teal: #2f6f62;
+        --rust: #9c4b3f;
+        --rule: rgba(20, 32, 43, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--navy);
+        color: var(--ink);
+        font-family: "IBM Plex Sans", sans-serif;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        padding: 48px 20px;
+      }
+
+      .sheet {
+        background: var(--paper);
+        width: 100%;
+        max-width: 700px;
+        padding: 40px 48px 56px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      }
+
+      .masthead {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 13px;
+        color: var(--ink-soft);
+        letter-spacing: 0.02em;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--brass);
+        margin-bottom: 32px;
+      }
+
+      h1 {
+        font-family: "Source Serif 4", serif;
+        font-weight: 600;
+        font-size: 32px;
+        line-height: 1.2;
+        margin: 0 0 8px;
+      }
+
+      .subtitle {
+        color: var(--ink-soft);
+        font-size: 15px;
+        margin: 0 0 28px;
+        max-width: 52ch;
+      }
+
+      .ask-form {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      input[type="text"] {
+        flex: 1;
+        font-family: inherit;
+        font-size: 15px;
+        padding: 13px 14px;
+        border: 1px solid var(--rule);
+        background: #fff;
+        color: var(--ink);
+      }
+
+      input[type="text"]:focus {
+        outline: none;
+        border-color: var(--brass);
+        box-shadow: 0 0 0 3px rgba(184, 147, 91, 0.25);
+      }
+
+      button {
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 500;
+        padding: 13px 22px;
+        background: var(--navy);
+        color: var(--paper);
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s ease;
+      }
+
+      button:hover:not(:disabled) {
+        background: #1a3a56;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .suggestions button.chip {
+        background: none;
+        border: 1px solid var(--rule);
+        color: var(--ink-soft);
+        font-size: 13px;
+        padding: 6px 12px;
+      }
+
+      .suggestions button.chip:hover:not(:disabled) {
+        border-color: var(--brass);
+        color: var(--ink);
+        background: none;
+      }
+
+      textarea#questionInput {
+        flex: 1;
+        font-family: inherit;
+        font-size: 15px;
+        padding: 13px 14px;
+        border: 1px solid var(--rule);
+        background: #fff;
+        color: var(--ink);
+        resize: none;
+        line-height: 1.4;
+      }
+
+      textarea#questionInput:focus {
+        outline: none;
+        border-color: var(--brass);
+        box-shadow: 0 0 0 3px rgba(184, 147, 91, 0.25);
+      }
+
+      .result {
+        margin-top: 36px;
+        padding-top: 28px;
+        border-top: 1px solid var(--rule);
+        display: none;
+      }
+
+      .result.visible {
+        display: block;
+      }
+
+      .state-label {
+        font-size: 13px;
+        color: var(--ink-soft);
+        margin-bottom: 14px;
+        min-height: 18px;
+      }
+
+      .answer {
+        font-family: "Source Serif 4", serif;
+        font-size: 19px;
+        line-height: 1.65;
+        margin: 0 0 28px;
+      }
+
+      .answer sup {
+        color: var(--brass);
+        font-weight: 600;
+        margin-left: 1px;
+      }
+
+      .sources-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink-soft);
+        margin: 0 0 10px;
+      }
+      .source-item a {
+        color: var(--ink);
+        text-decoration: none;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .source-item a:hover {
+        border-bottom-color: var(--brass);
+        color: var(--brass);
+      }
+
+      .source-item {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--rule);
+        font-size: 14px;
+      }
+
+      .source-item:last-child {
+        border-bottom: none;
+      }
+
+      .source-num {
+        color: var(--brass);
+        font-weight: 600;
+        min-width: 16px;
+      }
+
+      .tier-badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 2px;
+        color: #fff;
+        margin-left: auto;
+      }
+
+      .tier-badge.primary {
+        background: var(--teal);
+      }
+      .tier-badge.summary {
+        background: var(--rust);
+      }
+
+      .not-found-panel {
+        background: rgba(156, 75, 63, 0.08);
+        border-left: 3px solid var(--rust);
+        padding: 16px 18px;
+        font-size: 15px;
+        color: var(--ink);
+      }
+
+      .error-panel {
+        background: rgba(156, 75, 63, 0.08);
+        border-left: 3px solid var(--rust);
+        padding: 16px 18px;
+        font-size: 14px;
+        color: var(--ink);
+      }
+
+      @media (max-width: 600px) {
+        .sheet {
+          padding: 28px 24px 40px;
+        }
+        h1 {
+          font-size: 26px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sheet">
+      <div class="masthead">
+        <span>BudgetSense</span>
+        <span>Budget 2026&ndash;27</span>
+      </div>
+
+      <h1>Ask about the Federal Budget</h1>
+      <p class="subtitle">
+        Answers are grounded in the source Budget Papers, with citations traced
+        back to the page they came from.
+      </p>
+
+      <form class="ask-form" id="askForm">
+        <textarea
+          id="questionInput"
+          placeholder="What is the WATO tax offset amount?"
+          rows="4"
+        ></textarea>
+        <button type="submit" id="askButton">Ask</button>
+      </form>
+
+      <div class="suggestions" id="suggestions">
+        <button
+          type="button"
+          class="chip"
+          data-question="What is the best way to plan my finances to reduce my tax, including for a working couple with kids?"
+        >
+          Reducing tax for a family
+        </button>
+        <button
+          type="button"
+          class="chip"
+          data-question="What is the WATO tax offset amount for working Australians?"
+        >
+          Tax offset for workers
+        </button>
+        <button
+          type="button"
+          class="chip"
+          data-question="What support does the Budget provide for small businesses?"
+        >
+          Support for small business
+        </button>
+      </div>
+
+      <div class="result" id="result">
+        <div class="state-label" id="stateLabel"></div>
+        <div id="resultBody"></div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("askForm");
+      const input = document.getElementById("questionInput");
+      const button = document.getElementById("askButton");
+      const result = document.getElementById("result");
+      const stateLabel = document.getElementById("stateLabel");
+      const resultBody = document.getElementById("resultBody");
+      const suggestions = document.getElementById("suggestions");
+
+      suggestions.addEventListener("click", (e) => {
+        if (e.target.matches(".chip")) {
+          input.value = e.target.textContent;
+          form.requestSubmit();
+        }
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const question = input.value.trim();
+        if (!question) return;
+
+        button.disabled = true;
+        result.classList.add("visible");
+        stateLabel.textContent = "Searching source documents\u2026";
+        resultBody.innerHTML = "";
+
+        try {
+          const res = await fetch("/query", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question }),
+          });
+
+          if (!res.ok) {
+            throw new Error("Server returned " + res.status);
+          }
+
+          const data = await res.json();
+          stateLabel.textContent = "";
+
+          if (data.not_found) {
+            resultBody.innerHTML =
+              '<div class="not-found-panel">No matching content found in the ingested budget documents for this question.</div>';
+          } else {
+            let citedAnswer = data.answer;
+            let sourcesHtml = "";
+            if (data.citations && data.citations.length) {
+              data.citations.forEach((c, i) => {
+                sourcesHtml += `
+               <div class="source-item">
+                <span class="source-num">${i + 1}</span>
+                <a href="${c.url}" target="_blank" rel="noopener">${c.source_document}, page ${c.page_number}</a>
+                <span class="tier-badge ${c.authority_tier}">${c.authority_tier}</span>
+              </div>`;
+              });
+              const marks = data.citations
+                .map((_, i) => `<sup>${i + 1}</sup>`)
+                .join("");
+              citedAnswer += marks;
+            }
+            resultBody.innerHTML = `
+          <p class="answer">${citedAnswer}</p>
+          ${sourcesHtml ? `<div class="sources-title">Sources</div>${sourcesHtml}` : ""}
+        `;
+          }
+        } catch (err) {
+          stateLabel.textContent = "";
+          resultBody.innerHTML = `<div class="error-panel">Something went wrong contacting the server. Please try again.<br>${err.message}</div>`;
+        } finally {
+          button.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

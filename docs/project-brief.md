@@ -77,3 +77,8 @@ Workflow per spec:
 - [ ] Architecture diagram exists and matches deployed reality
 - [x] Every phase has a corresponding spec in `/specs/` and a matching implementation commit
 - [x] No secrets in git history; no public IP on the database
+
+8. **Agentic Retrieval** — multi-hop reasoning (ReAct) over the Epic 6 RAG
+   pipeline, to correctly answer compound, multi-topic citizen questions
+   that a single-pass retrieval can't represent well (see `docs/PRD.md`
+   Epic 8, ADR-010)

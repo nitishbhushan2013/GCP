@@ -2,6 +2,16 @@ import os
 import psycopg
 from retrieval import embed_query, retrieve, vector_search
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DB_HOST = "127.0.0.1"  # Cloud SQL Auth Proxy tunnel — local dev only
+DB_PORT = 5433
+DB_NAME = os.environ.get("DB_NAME")
+DB_USER = os.environ.get("DB_USER")
+DB_PASSWORD = os.environ.get("DB_PASSWORD")
+
 conn = psycopg.connect(
     host="127.0.0.1", port=5433,
     dbname="budgetsense", user="budgetsense_app", password=os.environ["DB_PASSWORD"],

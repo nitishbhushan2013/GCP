@@ -3,14 +3,24 @@ import psycopg
 from retrieval import embed_query, vector_search, full_text_search, rrf_fuse, apply_authority_boost, fetch_parent_sections
 from generation import generate_answer, parse_response
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DB_HOST = "127.0.0.1"  # Cloud SQL Auth Proxy tunnel — local dev only
+DB_PORT = 5433
+DB_NAME = os.environ.get("DB_NAME")
+DB_USER = os.environ.get("DB_USER")
+DB_PASSWORD = os.environ.get("DB_PASSWORD")
+
 conn = psycopg.connect(
     host="127.0.0.1", port=5433,
-    dbname="budgetsense", user="budgetsense_app", password=os.environ["DB_PASSWORD"],
+    dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD,
 )
 
 
-question = "What is the WATO tax offset amount?"
-#question = "I run a café with $800K turnover. What Budget measures can help my cash flow right now?"
+#question = "What is the WATO tax offset amount?"
+question = "What is the best way to plan my finances to reduce my tax, including for a working couple with kids?"
 query_vec = embed_query(question)
 
 print("--- Vector search ---")

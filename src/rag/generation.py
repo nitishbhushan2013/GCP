@@ -46,11 +46,15 @@ def generate_answer(question: str, parent_sections: list) -> str:
 import re
 
 def parse_response(raw_answer: str, parent_sections: list) -> dict:
-    citation_pattern = r"\[Source (\d+),?\s*p\.(\d+)\]"
-    matches = re.findall(citation_pattern, raw_answer)
-
-# cited_source_nums deduplicates and sorts — if Gemini cites Source 1 twice in one answer, we don't want it listed twice in the structured output.
-    cited_source_nums = sorted(set(int(num) for num, _ in matches))
+    # Matches one whole [Source ...] bracket, however many citations are inside it
+    bracket_pattern = r"\[Source[^\]]+\]"
+    # Extracts individual "Source N" numbers from inside a matched bracket
+    number_pattern = r"Source (\d+)"
+    PUBLIC_DOCS_BASE_URL = "https://storage.googleapis.com/budgetsense-gcp-prod-docs-public"
+    all_brackets = re.findall(bracket_pattern, raw_answer)
+    cited_source_nums = sorted(set(
+        int(n) for bracket in all_brackets for n in re.findall(number_pattern, bracket)
+    ))
 
     citations = []
     for num in cited_source_nums:
@@ -61,11 +65,12 @@ def parse_response(raw_answer: str, parent_sections: list) -> dict:
                 "source_document": source_doc,
                 "page_number": page,
                 "authority_tier": tier,
+                 "url": f"{PUBLIC_DOCS_BASE_URL}/{source_doc}.pdf#page={page}",
             })
 
-    clean_answer = re.sub(citation_pattern, "", raw_answer)
-    clean_answer = re.sub(r"[,\s]+([.,])", r"\1", clean_answer)  # collapse leftover commas/spaces before punctuation
-    clean_answer = re.sub(r"\s{2,}", " ", clean_answer).strip()  # collapse any double-spaces left behind
+    clean_answer = re.sub(bracket_pattern, "", raw_answer)
+    clean_answer = re.sub(r"[,\s]+([.,])", r"\1", clean_answer)
+    clean_answer = re.sub(r"\s{2,}", " ", clean_answer).strip()
 
     not_found = "not found in the provided budget documents" in raw_answer.lower()
 
