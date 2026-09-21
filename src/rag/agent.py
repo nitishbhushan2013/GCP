@@ -2,7 +2,7 @@ import json
 
 from google import genai
 from google.genai.types import GenerateContentConfig
-
+from retrieval import retrieve
 
 DECOMPOSE_PROMPT_TEMPLATE = """You are the query-planning step of a Q&A system that answers questions about 
 the Australian Federal Budget using only the source documents in a retrieval database.
@@ -23,6 +23,11 @@ documents, so:
 3. If the question already asks about a single fact or topic, do not split it - return exactly one 
    sub-question, the original question unchanged (only reworded if it is advice-framed).
 4. Do not introduce a topic the original question does not imply.
+5. Do not split a timing/effective-date/implementation-timeline question off into its own 
+   sub-question when it belongs to the same underlying topic as another sub-question. Budget 
+   explainer documents typically state a policy change and its effective date in the same 
+   passage, so a question like "what changes and when does it take effect" should stay as ONE 
+  sub-question covering both - not two, one for the change and a separate one for the date.
 
 Respond with ONLY a JSON object of this exact shape, no other text:
 {{"sub_questions": ["...", "..."]}}"""
@@ -60,3 +65,17 @@ def decompose_question(question: str) -> list[str]:
     if not sub_questions:
         return [question]
     return sub_questions[:4]
+
+def multi_hop_retrieve(conn, sub_questions: list[str], top_k: int = 5):
+    seen_section_ids = set()
+    deduped_parents = []
+
+    for sub_question in sub_questions:
+        _, parents = retrieve(conn, sub_question, top_k=top_k)
+        for parent in parents:
+            section_id = parent[0]
+            if section_id not in seen_section_ids:
+                seen_section_ids.add(section_id)
+                deduped_parents.append(parent)
+
+    return deduped_parents

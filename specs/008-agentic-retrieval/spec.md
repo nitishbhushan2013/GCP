@@ -94,7 +94,7 @@ capability from reference-only to committed scope.
       factual, non-advice-framed sub-questions; a single-topic question stays
       as one sub-question. Verified standalone against 3 test questions (WATO,
       discretionary trust, tax planning) — see `development.md` Phase A.
-- [ ] Each sub-question independently runs through the existing `retrieve()`
+- [x] Each sub-question independently runs through the existing `retrieve()`
       pipeline; results deduplicated by `section_id`.
 - [ ] When gathered context is insufficient, exactly one bounded gap-filling
       sub-question is generated and retrieved — never more than one retry.
