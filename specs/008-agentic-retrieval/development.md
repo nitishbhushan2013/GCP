@@ -28,23 +28,23 @@ Status legend: ⬜ Not started · 🔄 In progress · ✅ Done
 
 ## Phase B — Multi-Hop Retrieval Wiring (code)
 
-- [⬜] B1. Write a loop that runs each decomposed sub-question through the
+- [✅] B1. Write a loop that runs each decomposed sub-question through the
   existing `retrieve()` pipeline (Phase C of Epic 6) independently
-- [⬜] B2. Collect parent sections across all sub-questions
-- [⬜] B3. Dedupe collected parent sections by `section_id`
-- [⬜] B4. Manually test against the discretionary trust and tax-planning
+- [✅] B2. Collect parent sections across all sub-questions
+- [✅] B3. Dedupe collected parent sections by `section_id`
+- [✅] B4. Manually test against the discretionary trust and tax-planning
   questions — confirm retrieval now returns sections for _each_ sub-topic,
   not one diluted set
 
 ## Phase C — Sufficiency Check & Bounded Re-query (code)
 
-- [⬜] C1. Define what "sufficient" means (e.g. every sub-question has at least
+- [✅] C1. Define what "sufficient" means (e.g. every sub-question has at least
   one parent section above a distance/rank threshold)
-- [⬜] C2. If insufficient, generate exactly one gap-filling sub-question
+- [✅] C2. If insufficient, generate exactly one gap-filling sub-question
   (Gemini call) targeting the uncovered part of the question
-- [⬜] C3. Retrieve for the gap sub-question and merge into the deduped set
+- [✅] C3. Retrieve for the gap sub-question and merge into the deduped set
   (Phase B3's dedupe applies again)
-- [⬜] C4. Hard-cap at one retry — confirm there is no path to a second
+- [✅] C4. Hard-cap at one retry — confirm there is no path to a second
   gap-query even if the first retry is also insufficient
 
 ## Phase D — Synthesized Generation (code)

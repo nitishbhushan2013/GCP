@@ -258,3 +258,20 @@ expectations, or Gemini API cost from repeated calls per question becomes
 material (relevant given ADR-008's public, unauthenticated access — more
 reason to bound iteration count strictly).
 **Related:** PRD Epic 8, retires Epic 6 spec.md §3's ReAct non-goal.
+
+### ADR-011: Sufficiency check bounded to exactly one retry, not a loop
+
+**Context:** Epic 8's multi-hop retrieval can still under-cover a question
+if a sub-question's retrieval misses the right document or drowns it in
+noise (see Phase B's OR-matching limitation).
+
+**Decision:** After multi-hop retrieval, one LLM call judges overall
+sufficiency and, if insufficient, writes a single gap-question. Retrieval
+runs once more against it, results are merged and deduped, and the pipeline
+proceeds regardless of the outcome — no second sufficiency check, no loop.
+
+**Consequences:** Bounded, predictable latency and cost per query. Accepted
+tradeoff: a genuine gap is not always closed by one retry (see architecture.md
+§6.5). Final responsibility for handling an under-covered question still
+rests with Phase D's existing grounded-generation refusal (Epic 6), not with
+retrieval.

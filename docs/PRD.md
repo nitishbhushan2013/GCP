@@ -265,3 +265,16 @@ multi-topic question represents none of its topics well (see ADR-010).
 | 8.4 Synthesized generation           | One answer synthesized across all gathered sections, with citations spanning multiple sub-questions' sources                                              | ⬜     |
 | 8.5 No regression on single-topic Qs | The original 5 single-fact test questions still resolve in effectively one hop, same quality as before                                                    | ⬜     |
 | 8.6 Endpoint parity                  | `/query`'s external contract (`answer`, `citations`, `not_found`) is unchanged — this is an internal upgrade                                              | ⬜     |
+
+### Story 8.3: Sufficiency check with bounded one-retry gap-fill — Done
+
+After multi-hop retrieval, an LLM-based sufficiency check judges whether the
+retrieved sections plausibly cover the original question. If not, it writes
+one targeted gap-question and retrieval runs exactly once more against it —
+never a loop. Tested against WATO (single-topic, sufficient on first pass),
+the discretionary trust question (initial pass missed the trust explainer
+document entirely; retry correctly recovered it), a broad tax-planning
+question (flagged insufficient; retry found no new sections — accepted
+limitation, logged in architecture.md §6.5), and a Mars colonization
+negative control (correctly flagged insufficient; refusal is generation's
+responsibility, not retrieval's — see §6.5 note).

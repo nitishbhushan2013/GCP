@@ -79,3 +79,81 @@ def multi_hop_retrieve(conn, sub_questions: list[str], top_k: int = 5):
                 deduped_parents.append(parent)
 
     return deduped_parents
+
+
+SUFFICIENCY_PROMPT_TEMPLATE = """You are checking whether enough source material has been gathered to answer a 
+citizen's question about the Australian Federal Budget.
+
+ORIGINAL QUESTION:
+{question}
+
+THIS WAS BROKEN DOWN INTO THESE SUB-QUESTIONS:
+{sub_questions}
+
+SECTIONS RETRIEVED SO FAR (source document, page, tier, and a short excerpt):
+{retrieved_summary}
+
+Judge whether the retrieved sections, taken together, plausibly contain enough information to 
+answer the ORIGINAL QUESTION - not whether they answer it perfectly, just whether a reasonable 
+attempt is possible.
+
+If every sub-question has at least one section that looks genuinely on-topic for it, mark sufficient.
+If one or more sub-questions has NO on-topic section among those retrieved, mark insufficient, and 
+write ONE additional, self-contained, purely factual (never advice-framed) sub-question that targets 
+exactly the missing gap - not a restatement of a sub-question that already has decent coverage.
+
+Respond with ONLY a JSON object of this exact shape, no other text:
+{{"sufficient": true or false, "gap_question": "..." or null}}"""
+
+
+def check_sufficiency(question: str, sub_questions: list[str], parents: list[tuple]) -> tuple[bool, str | None]:
+    # Short excerpts only, not full section_text - this call only needs to judge topic
+    # coverage, not read for facts, and most sections run 1500-2500 tokens (ADR-005).
+    retrieved_summary = "\n".join(
+        f"- {source_document} p.{page_number} ({authority_tier}): {section_text[:200]}..."
+        for _, source_document, page_number, authority_tier, section_text in parents
+    )
+    prompt = SUFFICIENCY_PROMPT_TEMPLATE.format(
+        question=question,
+        sub_questions="\n".join(f"- {sq}" for sq in sub_questions),
+        retrieved_summary=retrieved_summary,
+    )
+
+    client = genai.Client(vertexai=True, project="budgetsense-gcp-prod", location="us-central1")
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=GenerateContentConfig(temperature=0.0, response_mime_type="application/json"),
+    )
+
+    try:
+        parsed = json.loads(response.text)
+        sufficient = bool(parsed.get("sufficient", True))
+        gap_question = parsed.get("gap_question") if not sufficient else None
+    except (json.JSONDecodeError, AttributeError):
+        # Fail safe: if the judge call itself breaks, don't block the pipeline on it -
+        # treat as sufficient and let Phase D generation's own groundedness/refusal
+        # behaviour (Epic 6's existing safety net) be the final word.
+        sufficient, gap_question = True, None
+
+    return sufficient, gap_question
+
+
+def gather_context(conn, question: str, top_k: int = 5) -> list[tuple]:
+    """Orchestrates Phases A-C: decompose, multi-hop retrieve, check sufficiency,
+    and - bounded to exactly one retry, never a loop - fill one gap if needed."""
+    sub_questions = decompose_question(question)
+    parents = multi_hop_retrieve(conn, sub_questions, top_k=top_k)
+
+    sufficient, gap_question = check_sufficiency(question, sub_questions, parents)
+    if not sufficient and gap_question:
+        gap_parents = multi_hop_retrieve(conn, [gap_question], top_k=top_k)
+        seen_ids = {p[0] for p in parents}
+        for parent in gap_parents:
+            if parent[0] not in seen_ids:
+                seen_ids.add(parent[0])
+                parents.append(parent)
+        # No second sufficiency check here - C4's hard cap. One retry, then whatever
+        # we have goes to Phase D, insufficient or not.
+
+    return parents
