@@ -139,9 +139,11 @@ def check_sufficiency(question: str, sub_questions: list[str], parents: list[tup
     return sufficient, gap_question
 
 
-def gather_context(conn, question: str, top_k: int = 5) -> list[tuple]:
+def gather_context(conn, question: str, top_k: int = 5) -> tuple[list[str], list[tuple]]:
     """Orchestrates Phases A-C: decompose, multi-hop retrieve, check sufficiency,
-    and - bounded to exactly one retry, never a loop - fill one gap if needed."""
+    and - bounded to exactly one retry, never a loop - fill one gap if needed. 
+    Returns (sub_questions, parent_sections) so Phase D can use the sub-questions 
+    as an explicit synthesis checklist."""
     sub_questions = decompose_question(question)
     parents = multi_hop_retrieve(conn, sub_questions, top_k=top_k)
 
@@ -155,5 +157,4 @@ def gather_context(conn, question: str, top_k: int = 5) -> list[tuple]:
                 parents.append(parent)
         # No second sufficiency check here - C4's hard cap. One retry, then whatever
         # we have goes to Phase D, insufficient or not.
-
-    return parents
+    return sub_questions, parents

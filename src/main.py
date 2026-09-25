@@ -6,7 +6,7 @@ import psycopg
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
-from rag.retrieval import retrieve
+from rag.agent import gather_context
 from rag.generation import generate_answer, parse_response
 from fastapi.staticfiles import StaticFiles
 
@@ -95,15 +95,17 @@ class QueryRequest(BaseModel):
 @app.post("/query")
 def query(request: QueryRequest):
     """
-    Grounded Q&A over Federal Budget documents. Retrieval (hybrid vector +
-    full-text search, RRF-fused, authority-boosted) finds the relevant
-    parent sections; Gemini generates an answer constrained to only that
-    retrieved text, with citations traced back to specific sources.
+    Grounded Q&A over Federal Budget documents. The question is
+    decomposed into sub-questions, each retrieved  (hybrid vector +
+    full-text search, RRF-fused, authority-boosted) independently, coverage
+    is checked with one bounded gap-filling retry (agent.gather_context),
+    then Gemini generates one synthesized answer constrained to only that
+    retrieved text, with citations traced back to specific sources. 
     """
     conn = get_connection()
     try:
-        boosted, parents = retrieve(conn, request.question, top_k=5)
-        raw_answer = generate_answer(request.question, parents)
+        sub_questions, parents = gather_context(conn, request.question, top_k=5)
+        raw_answer = generate_answer(request.question, sub_questions, parents)
         parsed = parse_response(raw_answer, parents)
     finally:
         conn.close()

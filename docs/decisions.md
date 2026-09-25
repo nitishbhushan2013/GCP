@@ -275,3 +275,22 @@ tradeoff: a genuine gap is not always closed by one retry (see architecture.md
 §6.5). Final responsibility for handling an under-covered question still
 rests with Phase D's existing grounded-generation refusal (Epic 6), not with
 retrieval.
+
+### ADR-012: Synthesis prompt uses sub-questions as an explicit checklist
+
+**Context:** generate_answer() previously saw only the original question and
+a flat source list. For multi-topic questions, this risked the model
+answering only the most prominent sub-topic and silently dropping others.
+
+**Decision:** gather_context() now returns (sub_questions, parent_sections);
+generate_answer() takes sub_questions as a required argument and the prompt
+lists them explicitly, instructing the model to address each one - and to
+say so if a sub-topic has no support - rather than inferring topic coverage
+from source volume alone.
+
+**Consequences:** generate_answer()'s signature changed (breaking, but its
+only caller is main.py's /query, updated in the same change). Confirmed via
+testing that the not-found and per-sub-topic instructions must be ordered
+and gated explicitly, not left as parallel options, or a single-sub-question
+refusal case can be misrouted past parse_response()'s literal not_found
+match.

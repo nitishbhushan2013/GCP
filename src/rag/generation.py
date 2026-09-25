@@ -8,33 +8,51 @@ even if you know the answer from elsewhere.
 SOURCE MATERIAL:
 {context}
 
-QUESTION: {question}
+ORIGINAL QUESTION: {question}
+
+This question was broken down into the following sub-topics, each independently 
+researched against the source material above:
+{sub_questions_list}
 
 Instructions:
-1. Answer using ONLY the source material above. If the answer is not clearly supported by it, respond exactly: "Not found in the provided budget documents."
-2. Every factual claim in your answer must be traceable to a specific source below. Reference each claim with its source label, e.g. [Source 1, p.35].
-3. Do not combine or infer figures that are not explicitly stated together in the same source.
-4. Keep the answer concise - a few sentences, not a full essay.
+1. Answer using ONLY the source material above.
+2. If NONE of the sub-topics above are supported by any source material, respond 
+   with exactly this phrase and nothing else: "Not found in the provided budget 
+   documents."
+3. Otherwise - if at least one sub-topic IS supported - address each supported 
+   sub-topic as its own short point. For any remaining sub-topic that has no 
+   support, note that briefly in one line rather than omitting it silently, but 
+   only under this instruction, never as a way to avoid instruction 2's exact 
+   phrase when it applies.
+4. Every factual claim must be traceable to a specific source below. Reference 
+   each claim with its source label, e.g. [Source 1, p.35].
+5. Do not combine or infer figures that are not explicitly stated together in 
+   the same source.
+6. Keep each sub-topic's point concise - this should read as a short, organized 
+   answer, not an essay, even when it covers multiple sub-topics.
 
 ANSWER:"""
 
 
-def build_prompt(question: str, parent_sections: list) -> str:
+def build_prompt(question: str, sub_questions: list[str], parent_sections: list) -> str:
     context_blocks = []
     for i, (section_id, source_doc, page, tier, section_text) in enumerate(parent_sections, start=1):
         context_blocks.append(
             f"[Source {i}, {source_doc} p.{page}, {tier} tier]\n{section_text}"
         )
     context = "\n\n".join(context_blocks)
-    return PROMPT_TEMPLATE.format(context=context, question=question)
+    sub_questions_list = "\n".join(f"- {sq}" for sq in sub_questions)
+    return PROMPT_TEMPLATE.format(
+        context=context, question=question, sub_questions_list=sub_questions_list
+    )
 
 """
 temperature=0.0 — Zero temperature makes output as deterministic and literal as possible, minimizing the model's tendency to paraphrase loosely 
                 or fill gaps with plausible-sounding but unsupported detail. It brings the model's output closer to a strict extraction from the provided context, 
                         which is crucial for factual accuracy in this task.
 """
-def generate_answer(question: str, parent_sections: list) -> str:
-    prompt = build_prompt(question, parent_sections)
+def generate_answer(question: str, sub_questions: list[str], parent_sections: list) -> str:
+    prompt = build_prompt(question, sub_questions, parent_sections)
     client = genai.Client(vertexai=True, project="budgetsense-gcp-prod", location="us-central1")
     response = client.models.generate_content(
         model="gemini-2.5-flash",
