@@ -2,7 +2,7 @@ import json
 
 from google import genai
 from google.genai.types import GenerateContentConfig
-from retrieval import retrieve
+from rag.retrieval import retrieve
 
 DECOMPOSE_PROMPT_TEMPLATE = """You are the query-planning step of a Q&A system that answers questions about 
 the Australian Federal Budget using only the source documents in a retrieval database.
@@ -45,7 +45,7 @@ response_mime_type="application/json" - asks Gemini to return raw JSON instead o
                    parsing here doesn't need the same regex-scraping generation.py uses on answer text -
                    there's no citation-bracket structure to preserve, just a list of strings.
 """
-def decompose_question(question: str) -> list[str]:
+def decompose_question(question: str, usage_log: list = None) -> list[str]:
     prompt = build_decompose_prompt(question)
     client = genai.Client(vertexai=True, project="budgetsense-gcp-prod", location="us-central1")
     response = client.models.generate_content(
@@ -53,7 +53,12 @@ def decompose_question(question: str) -> list[str]:
         contents=prompt,
         config=GenerateContentConfig(temperature=0.0, response_mime_type="application/json"),
     )
-
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=GenerateContentConfig(temperature=0.0, response_mime_type="application/json"),
+    )
+    _record_usage(response, usage_log)
     try:
         parsed = json.loads(response.text)
         sub_questions = [q.strip() for q in parsed.get("sub_questions", []) if q.strip()]
@@ -106,7 +111,7 @@ Respond with ONLY a JSON object of this exact shape, no other text:
 {{"sufficient": true or false, "gap_question": "..." or null}}"""
 
 
-def check_sufficiency(question: str, sub_questions: list[str], parents: list[tuple]) -> tuple[bool, str | None]:
+def check_sufficiency(question: str, sub_questions: list[str], parents: list[tuple], usage_log: list = None) -> tuple[bool, str | None]:
     # Short excerpts only, not full section_text - this call only needs to judge topic
     # coverage, not read for facts, and most sections run 1500-2500 tokens (ADR-005).
     retrieved_summary = "\n".join(
@@ -125,7 +130,7 @@ def check_sufficiency(question: str, sub_questions: list[str], parents: list[tup
         contents=prompt,
         config=GenerateContentConfig(temperature=0.0, response_mime_type="application/json"),
     )
-
+    _record_usage(response, usage_log)
     try:
         parsed = json.loads(response.text)
         sufficient = bool(parsed.get("sufficient", True))
@@ -138,16 +143,25 @@ def check_sufficiency(question: str, sub_questions: list[str], parents: list[tup
 
     return sufficient, gap_question
 
+def _record_usage(response, usage_log):
+    if usage_log is None:
+        return
+    usage = getattr(response, "usage_metadata", None)
+    usage_log.append({
+        "input_tokens": getattr(usage, "prompt_token_count", 0) or 0,
+        "output_tokens": getattr(usage, "candidates_token_count", 0) or 0,
+})
 
-def gather_context(conn, question: str, top_k: int = 5) -> tuple[list[str], list[tuple]]:
+
+def gather_context(conn, question: str, top_k: int = 5, usage_log: list = None) -> tuple[list[str], list[tuple]]:
     """Orchestrates Phases A-C: decompose, multi-hop retrieve, check sufficiency,
     and - bounded to exactly one retry, never a loop - fill one gap if needed. 
     Returns (sub_questions, parent_sections) so Phase D can use the sub-questions 
     as an explicit synthesis checklist."""
-    sub_questions = decompose_question(question)
+    sub_questions = decompose_question(question, usage_log=usage_log)
     parents = multi_hop_retrieve(conn, sub_questions, top_k=top_k)
 
-    sufficient, gap_question = check_sufficiency(question, sub_questions, parents)
+    sufficient, gap_question = check_sufficiency(question, sub_questions, parents, usage_log=usage_log)
     if not sufficient and gap_question:
         gap_parents = multi_hop_retrieve(conn, [gap_question], top_k=top_k)
         seen_ids = {p[0] for p in parents}

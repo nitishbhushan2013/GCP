@@ -278,3 +278,31 @@ question (flagged insufficient; retry found no new sections — accepted
 limitation, logged in architecture.md §6.5), and a Mars colonization
 negative control (correctly flagged insufficient; refusal is generation's
 responsibility, not retrieval's — see §6.5 note).
+
+### Story 8.4: Synthesis generation with sub-question checklist — Done
+
+generate_answer() now receives Phase A's sub-questions alongside the retrieved
+sections, given to Gemini as an explicit synthesis checklist rather than
+relying on the model to infer multi-topic coverage from a larger source pool.
+Tested against WATO (single-topic, unchanged behaviour), the discretionary
+trust question (single sub-question after Phase B's fix, full coverage of
+both the change and its effective date), the tax-planning question (3
+sub-questions, answer correctly produced 3 distinct points including an
+honest "no support found" for the couples-specific sub-topic rather than
+dropping it), and Mars colonization (negative control - correctly triggers
+the exact-phrase not_found, after fixing an instruction-ordering ambiguity
+that initially let a single-sub-question "not found" case slip past the
+literal not_found string match in parse_response()).
+
+### Story 8.5: Citizen-facing answer formatting & cost transparency — Done
+
+Following first live-deployment testing, several rounds of prompt and UI
+iteration were needed to make synthesized answers actually readable:
+category headings for broad multi-category questions, a heading-format
+safety-net normalizer in the frontend, an intro sentence acknowledging the
+question, a procedural (non-personalized) "Next Steps" section, and a
+UI-hardcoded disclaimer note - each caught via screenshot review rather
+than automated testing, since Phase D's original testing was API-level
+only and never rendered the answer as a citizen would see it. Also added:
+per-query token usage tracking across all three Gemini calls (decompose,
+sufficiency check, synthesis), surfaced as an estimated cost line in the UI.

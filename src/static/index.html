@@ -9,6 +9,7 @@
       href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
     <style>
       :root {
         --navy: #10263b;
@@ -32,7 +33,8 @@
         font-family: "IBM Plex Sans", sans-serif;
         min-height: 100vh;
         display: flex;
-        justify-content: center;
+        flex-direction: column;
+        align-items: center;
         padding: 48px 20px;
       }
 
@@ -177,6 +179,37 @@
         margin: 0 0 28px;
       }
 
+      .answer p {
+        margin: 0 0 16px;
+      }
+      .answer p:last-child {
+        margin-bottom: 0;
+      }
+      .answer strong {
+        color: var(--navy);
+      }
+      .answer ul {
+        margin: 0 0 16px;
+        padding-left: 22px;
+      }
+      .answer h3 {
+        font-family: "IBM Plex Sans", sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--brass);
+        margin: 24px 0 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .answer h3:first-child {
+        margin-top: 0;
+      }
+      .answer li {
+        margin-bottom: 8px;
+      }
+
       .answer sup {
         color: var(--brass);
         font-weight: 600;
@@ -209,6 +242,32 @@
         font-size: 14px;
       }
 
+      .show-more-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: none;
+        border: 1px solid var(--rule);
+        color: var(--brass);
+        font-size: 13px;
+        font-weight: 500;
+        padding: 8px 16px;
+        margin: 4px 0 20px;
+        cursor: pointer;
+      }
+      .show-more-btn:hover {
+        border-color: var(--brass);
+        background: rgba(184, 147, 91, 0.08);
+      }
+      .citation-marks {
+        margin: 0 0 20px;
+      }
+      .citation-marks sup {
+        color: var(--brass);
+        font-weight: 600;
+        margin-right: 2px;
+      }
+
       .source-item:last-child {
         border-bottom: none;
       }
@@ -234,6 +293,49 @@
         background: var(--rust);
       }
 
+      .next-steps-callout {
+        background: rgba(47, 111, 98, 0.08);
+        border-left: 3px solid var(--teal);
+        padding: 16px 20px;
+        margin: 0 0 28px;
+      }
+      .next-steps-label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--teal);
+        margin-bottom: 8px;
+      }
+      .next-steps-callout ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .next-steps-callout li {
+        margin-bottom: 6px;
+        font-size: 15px;
+      }
+      .next-steps-callout li:last-child {
+        margin-bottom: 0;
+      }
+
+      .next-steps-note {
+        font-size: 12.5px;
+        font-style: italic;
+        color: var(--ink-soft);
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(47, 111, 98, 0.2);
+      }
+
+      .usage-note {
+        font-size: 11.5px;
+        color: var(--ink-soft);
+        opacity: 0.65;
+        margin-top: 18px;
+        text-align: right;
+      }
+
       .not-found-panel {
         background: rgba(156, 75, 63, 0.08);
         border-left: 3px solid var(--rust);
@@ -248,6 +350,19 @@
         padding: 16px 18px;
         font-size: 14px;
         color: var(--ink);
+      }
+
+      footer.disclaimer {
+        max-width: 700px;
+        width: 100%;
+        margin-top: 20px;
+        padding: 16px 20px;
+        background: rgba(241, 236, 225, 0.08);
+        border: 1px solid rgba(241, 236, 225, 0.2);
+        color: rgba(241, 236, 225, 0.75);
+        font-size: 12.5px;
+        line-height: 1.5;
+        text-align: center;
       }
 
       @media (max-width: 600px) {
@@ -312,6 +427,14 @@
       </div>
     </div>
 
+    <footer class="disclaimer">
+      BudgetSense provides general information based on publicly available
+      Federal Budget documents. It is not financial, tax, or legal advice and
+      does not account for your personal circumstances. For advice specific to
+      your situation, consult a registered tax agent, financial adviser, or the
+      ATO.
+    </footer>
+
     <script>
       const form = document.getElementById("askForm");
       const input = document.getElementById("questionInput");
@@ -323,10 +446,97 @@
 
       suggestions.addEventListener("click", (e) => {
         if (e.target.matches(".chip")) {
-          input.value = e.target.textContent;
+          input.value = e.target.dataset.question || e.target.textContent;
           form.requestSubmit();
         }
       });
+
+      function applyCategoryCollapse(container, maxVisible = 3) {
+        const children = Array.from(container.children);
+        const groups = [];
+        let current = null;
+        const preamble = [];
+
+        children.forEach((el) => {
+          if (el.tagName === "H3") {
+            current = [el];
+            groups.push(current);
+          } else if (current) {
+            current.push(el);
+          } else {
+            // content before any heading (e.g. a single-fact intro line) - always shown
+            preamble.push(el);
+          }
+        });
+
+        if (groups.length <= maxVisible) return;
+
+        const hiddenGroups = groups.slice(maxVisible);
+        const hiddenWrapper = document.createElement("div");
+        hiddenWrapper.className = "answer-more";
+        hiddenGroups.forEach((group) =>
+          group.forEach((el) => hiddenWrapper.appendChild(el)),
+        );
+        hiddenWrapper.style.display = "none";
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.type = "button";
+        toggleBtn.className = "show-more-btn";
+        const remaining = hiddenGroups.length;
+        toggleBtn.textContent = `Show ${remaining} more categor${remaining === 1 ? "y" : "ies"}`;
+        toggleBtn.addEventListener("click", () => {
+          hiddenWrapper.style.display = "block";
+          toggleBtn.remove();
+        });
+
+        container.appendChild(toggleBtn);
+        container.appendChild(hiddenWrapper);
+      }
+      function normalizeHeadings(markdown) {
+        // Ensures every "### " starts a fresh line, even if the model ran it
+        // together with preceding text - markdown parsers only treat ### as a
+        // heading when it's at the start of a line.
+        return markdown.replace(/([^\n])(\s*)(#{1,3}\s)/g, "$1\n\n$3");
+      }
+
+      function extractNextSteps(container) {
+        const headings = Array.from(container.querySelectorAll("h3"));
+        const nextStepsHeading = headings.find(
+          (h) => h.textContent.trim().toLowerCase() === "next steps",
+        );
+        if (!nextStepsHeading) return null;
+
+        const collected = [];
+        let node = nextStepsHeading.nextElementSibling;
+        nextStepsHeading.remove();
+        while (node && node.tagName !== "H3") {
+          const next = node.nextElementSibling;
+          collected.push(node);
+          node = next;
+        }
+        collected.forEach((el) => el.remove());
+
+        const callout = document.createElement("div");
+        callout.className = "next-steps-callout";
+        const label = document.createElement("div");
+        label.className = "next-steps-label";
+        label.textContent = "Next steps";
+        callout.appendChild(label);
+        collected.forEach((el) => callout.appendChild(el));
+
+        const note = document.createElement("div");
+        note.className = "next-steps-note";
+        note.textContent =
+          "These are indicative suggestions based on the source material, not personalized advice - pick whichever, if any, are relevant to you.";
+        callout.appendChild(note);
+
+        return callout;
+      }
+
+      const usage = data.usage;
+      const usageHtml = usage
+        ? `<div class="usage-note">~${usage.total_tokens.toLocaleString()} tokens across ${usage.llm_calls} model call${usage.llm_calls === 1 ? "" : "s"} · est. $${usage.estimated_cost_usd.toFixed(4)}</div>`
+        : "";
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -354,10 +564,11 @@
 
           if (data.not_found) {
             resultBody.innerHTML =
-              '<div class="not-found-panel">No matching content found in the ingested budget documents for this question.</div>';
+              '<div class="not-found-panel">No matching content found in the budget documents for this question.</div>' +
+              usageHtml;
           } else {
-            let citedAnswer = data.answer;
             let sourcesHtml = "";
+            let marks = "";
             if (data.citations && data.citations.length) {
               data.citations.forEach((c, i) => {
                 sourcesHtml += `
@@ -367,15 +578,26 @@
                 <span class="tier-badge ${c.authority_tier}">${c.authority_tier}</span>
               </div>`;
               });
-              const marks = data.citations
+              marks = data.citations
                 .map((_, i) => `<sup>${i + 1}</sup>`)
                 .join("");
-              citedAnswer += marks;
             }
+            const renderedAnswer = marked.parse(normalizeHeadings(data.answer));
             resultBody.innerHTML = `
-          <p class="answer">${citedAnswer}</p>
-          ${sourcesHtml ? `<div class="sources-title">Sources</div>${sourcesHtml}` : ""}
-        `;
+              <div class="answer" id="answerContent">${renderedAnswer}</div>
+              ${marks ? `<div class="citation-marks">${marks}</div>` : ""}
+              ${sourcesHtml ? `<div class="sources-title">Sources</div>${sourcesHtml}` : ""}
+              ${usageHtml}
+            `;
+            const answerContent = document.getElementById("answerContent");
+            const nextStepsEl = extractNextSteps(answerContent);
+            if (nextStepsEl) {
+              answerContent.insertBefore(
+                nextStepsEl,
+                answerContent.firstChild.nextSibling || null,
+              );
+            }
+            applyCategoryCollapse(answerContent);
           }
         } catch (err) {
           stateLabel.textContent = "";

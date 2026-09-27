@@ -48,6 +48,30 @@ def get_connection():
         connect_timeout=5,
     )
 
+# Gemini 2.5 Flash on Vertex AI, per 1M tokens (USD). Verify against
+# https://cloud.google.com/vertex-ai/generative-ai/pricing before relying on
+# this for real billing decisions - rates change, and this model is
+# scheduled for deprecation on 2026-10-16 per Google's pricing page.
+GEMINI_FLASH_PRICING = {
+    "input_per_million": 0.30,
+    "output_per_million": 2.50,
+}
+
+def estimate_cost(usage_log: list) -> dict:
+    input_tokens = sum(u["input_tokens"] for u in usage_log)
+    output_tokens = sum(u["output_tokens"] for u in usage_log)
+    cost = (
+        (input_tokens / 1_000_000) * GEMINI_FLASH_PRICING["input_per_million"]
+        + (output_tokens / 1_000_000) * GEMINI_FLASH_PRICING["output_per_million"]
+    )
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": input_tokens + output_tokens,
+        "estimated_cost_usd": round(cost, 6),
+        "llm_calls": len(usage_log),
+    }
+
 
 @app.get("/")
 def root():
@@ -103,11 +127,13 @@ def query(request: QueryRequest):
     retrieved text, with citations traced back to specific sources. 
     """
     conn = get_connection()
+    usage_log = []
     try:
-        sub_questions, parents = gather_context(conn, request.question, top_k=5)
-        raw_answer = generate_answer(request.question, sub_questions, parents)
+        sub_questions, parents = gather_context(conn, request.question, top_k=5, usage_log=usage_log)
+        raw_answer = generate_answer(request.question, sub_questions, parents, usage_log=usage_log)
         parsed = parse_response(raw_answer, parents)
     finally:
         conn.close()
-
+        
+    parsed["usage"] = estimate_cost(usage_log)
     return parsed

@@ -49,12 +49,12 @@ Status legend: ⬜ Not started · 🔄 In progress · ✅ Done
 
 ## Phase D — Synthesized Generation (code)
 
-- [⬜] D1. Extend Phase D's `generate_answer` prompt pattern to accept parent
+- [✅] D1. Extend Phase D's `generate_answer` prompt pattern to accept parent
   sections gathered from multiple sub-questions
-- [⬜] D2. Confirm citation parsing (`parse_response`) still correctly maps
+- [✅] D2. Confirm citation parsing (`parse_response`) still correctly maps
   `[Source N, p.X]` back to the right document when sources came from
   different sub-questions
-- [⬜] D3. Manually verify the synthesized answer for the trust and
+- [✅] D3. Manually verify the synthesized answer for the trust and
   tax-planning questions is not just "unhelpful, not found" as before
 
 ## Phase E — Endpoint Wiring & Regression Check

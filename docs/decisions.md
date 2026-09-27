@@ -294,3 +294,35 @@ testing that the not-found and per-sub-topic instructions must be ordered
 and gated explicitly, not left as parallel options, or a single-sub-question
 refusal case can be misrouted past parse_response()'s literal not_found
 match.
+
+### ADR-013: Defense-in-depth for LLM output formatting - prompt + code normalizer
+
+**Context:** The synthesis prompt's heading-grouping instructions worked
+most of the time but not reliably - headings occasionally rendered
+mid-sentence rather than on their own line, which broke markdown parsing.
+
+**Decision:** Keep the prompt instruction (reduces failure rate, costs
+nothing extra) but add a deterministic JS normalizer in the frontend that
+guarantees correct heading placement regardless of model output. Same
+principle applied to the citizen-facing compliance disclaimer note, which
+is hardcoded in the UI rather than prompted for on every call.
+
+**Consequences:** Slightly more frontend code, but formatting and
+compliance-adjacent content no longer depend on the model getting
+instruction-following exactly right on every single request.
+
+### ADR-014: Token cost estimate is informational only, not a billing figure
+
+**Context:** Each /query request now makes 3 Gemini calls (decompose,
+sufficiency check, synthesis). Citizens using the tool should be able to
+see the approximate cost of their query.
+
+**Decision:** Aggregate usage_metadata token counts across all 3 calls per
+request, estimate cost using published Gemini 2.5 Flash Vertex AI list
+pricing ($0.30/1M input, $2.50/1M output as of testing), and display as
+"est. $X" in the UI alongside total token count.
+
+**Consequences:** This is a list-price estimate, not an actual GCP billing
+figure - it doesn't account for discounts, free-tier grounding allowances,
+or rounding, and needs updating if Gemini 2.5 Flash pricing changes or the
+model is migrated ahead of its Oct 2026 deprecation.
