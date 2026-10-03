@@ -354,6 +354,8 @@ python -c "import main"
 
 From `src/`, with the Cloud SQL Auth Proxy running on port 5433:
 
+.\cloud-sql-proxy.exe --port 5433 budgetsense-gcp-prod:australia-southeast1:budgetsense-db
+
 ```bash
 python -m uvicorn main:app --host 0.0.0.0 --port 8080 --reload
 ```

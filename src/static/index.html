@@ -259,15 +259,6 @@
         border-color: var(--brass);
         background: rgba(184, 147, 91, 0.08);
       }
-      .citation-marks {
-        margin: 0 0 20px;
-      }
-      .citation-marks sup {
-        color: var(--brass);
-        font-weight: 600;
-        margin-right: 2px;
-      }
-
       .source-item:last-child {
         border-bottom: none;
       }
@@ -533,11 +524,6 @@
         return callout;
       }
 
-      const usage = data.usage;
-      const usageHtml = usage
-        ? `<div class="usage-note">~${usage.total_tokens.toLocaleString()} tokens across ${usage.llm_calls} model call${usage.llm_calls === 1 ? "" : "s"} · est. $${usage.estimated_cost_usd.toFixed(4)}</div>`
-        : "";
-
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const question = input.value.trim();
@@ -562,13 +548,17 @@
           const data = await res.json();
           stateLabel.textContent = "";
 
+          const usage = data.usage;
+          const usageHtml = usage
+            ? `<div class="usage-note">~${usage.total_tokens.toLocaleString()} tokens across ${usage.llm_calls} model call${usage.llm_calls === 1 ? "" : "s"} · est. $${usage.estimated_cost_usd.toFixed(4)}</div>`
+            : "";
+
           if (data.not_found) {
             resultBody.innerHTML =
               '<div class="not-found-panel">No matching content found in the budget documents for this question.</div>' +
               usageHtml;
           } else {
             let sourcesHtml = "";
-            let marks = "";
             if (data.citations && data.citations.length) {
               data.citations.forEach((c, i) => {
                 sourcesHtml += `
@@ -578,14 +568,10 @@
                 <span class="tier-badge ${c.authority_tier}">${c.authority_tier}</span>
               </div>`;
               });
-              marks = data.citations
-                .map((_, i) => `<sup>${i + 1}</sup>`)
-                .join("");
             }
             const renderedAnswer = marked.parse(normalizeHeadings(data.answer));
             resultBody.innerHTML = `
               <div class="answer" id="answerContent">${renderedAnswer}</div>
-              ${marks ? `<div class="citation-marks">${marks}</div>` : ""}
               ${sourcesHtml ? `<div class="sources-title">Sources</div>${sourcesHtml}` : ""}
               ${usageHtml}
             `;
