@@ -9,6 +9,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py .
 COPY rag/ ./rag/
 COPY static/ ./static/
+COPY geo.py .
+COPY geo_data/ ./geo_data/
 
 # Cloud Run sets $PORT at runtime (defaults to 8080) and expects the
 # container to listen on it — this is why we reference $PORT rather than

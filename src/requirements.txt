@@ -4,3 +4,4 @@ psycopg[binary]==3.2.3
 google-genai==2.23.0
 pydantic==2.13.5
 python-dotenv==1.0.1
+geoip2==4.8.0

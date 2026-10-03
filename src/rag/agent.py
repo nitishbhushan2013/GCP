@@ -150,6 +150,7 @@ def _record_usage(response, usage_log):
     usage_log.append({
         "input_tokens": getattr(usage, "prompt_token_count", 0) or 0,
         "output_tokens": getattr(usage, "candidates_token_count", 0) or 0,
+        "thinking_tokens": getattr(usage, "thoughts_token_count", 0) or 0,
 })
 
 

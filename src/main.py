@@ -9,7 +9,8 @@ from pydantic import BaseModel
 from rag.agent import gather_context
 from rag.generation import generate_answer, parse_response
 from fastapi.staticfiles import StaticFiles
-
+from fastapi import FastAPI, Response, Request
+from geo import get_client_ip, resolve_location
 
 
 
@@ -48,30 +49,64 @@ def get_connection():
         connect_timeout=5,
     )
 
-# Gemini 2.5 Flash on Vertex AI, per 1M tokens (USD). Verify against
-# https://cloud.google.com/vertex-ai/generative-ai/pricing before relying on
-# this for real billing decisions - rates change, and this model is
-# scheduled for deprecation on 2026-10-16 per Google's pricing page.
-GEMINI_FLASH_PRICING = {
-    "input_per_million": 0.30,
-    "output_per_million": 2.50,
+# Gemini 2.5 Flash on Vertex AI, per 1M tokens (USD), converted to AUD at an
+# approximate fixed rate. Both the USD pricing and the USD->AUD rate drift
+# over time - verify against https://cloud.google.com/vertex-ai/generative-ai/pricing
+# and a current FX rate before relying on this for real budgeting. Gemini
+# 2.5 Flash is also scheduled for deprecation 2026-10-16.
+USD_TO_AUD = 1.44
+GEMINI_FLASH_PRICING_AUD = {
+    "input_per_million": 0.30 * USD_TO_AUD,
+    "output_per_million": 2.50 * USD_TO_AUD,  # thinking tokens billed at this same rate
 }
+
 
 def estimate_cost(usage_log: list) -> dict:
     input_tokens = sum(u["input_tokens"] for u in usage_log)
     output_tokens = sum(u["output_tokens"] for u in usage_log)
-    cost = (
-        (input_tokens / 1_000_000) * GEMINI_FLASH_PRICING["input_per_million"]
-        + (output_tokens / 1_000_000) * GEMINI_FLASH_PRICING["output_per_million"]
-    )
+    thinking_tokens = sum(u.get("thinking_tokens", 0) for u in usage_log)
+
+    input_cost = (input_tokens / 1_000_000) * GEMINI_FLASH_PRICING_AUD["input_per_million"]
+    output_cost = (output_tokens / 1_000_000) * GEMINI_FLASH_PRICING_AUD["output_per_million"]
+    thinking_cost = (thinking_tokens / 1_000_000) * GEMINI_FLASH_PRICING_AUD["output_per_million"]
+    total_cost = input_cost + output_cost + thinking_cost
+
     return {
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
-        "total_tokens": input_tokens + output_tokens,
-        "estimated_cost_usd": round(cost, 6),
+        "thinking_tokens": thinking_tokens,
+        "total_tokens": input_tokens + output_tokens + thinking_tokens,
         "llm_calls": len(usage_log),
+        "input_cost_aud": round(input_cost, 8),
+        "thinking_cost_aud": round(thinking_cost, 8),
+        "output_cost_aud": round(output_cost, 8),
+        "total_cost_aud": round(total_cost, 8),
     }
 
+def log_query(conn, question: str, location: dict, suburb: str, usage: dict):
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO query_log
+                   (question, city, region, country, suburb, latitude, longitude,
+                    input_tokens, output_tokens, thinking_tokens, total_tokens, llm_calls,
+                    input_cost_aud, thinking_cost_aud, output_cost_aud, total_cost_aud)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (question, location["city"], location["region"], location["country"], suburb,
+                 location["latitude"], location["longitude"],
+                 usage["input_tokens"], usage["output_tokens"], usage["thinking_tokens"],
+                 usage["total_tokens"], usage["llm_calls"],
+                 usage["input_cost_aud"], usage["thinking_cost_aud"],
+                 usage["output_cost_aud"], usage["total_cost_aud"]),
+            )
+        conn.commit()
+    except Exception:
+        logger.exception("Failed to write query_log entry")
+
+# Gemini 2.5 Flash on Vertex AI, per 1M tokens (USD). Verify against
+# https://cloud.google.com/vertex-ai/generative-ai/pricing before relying on
+# this for real billing decisions - rates change, and this model is
+# scheduled for deprecation on 2026-10-16 per Google's pricing page.
 
 @app.get("/")
 def root():
@@ -116,8 +151,9 @@ class QueryRequest(BaseModel):
     question: str
 
 
+
 @app.post("/query")
-def query(request: QueryRequest):
+def query(request: QueryRequest, http_request: Request):
     """
     Grounded Q&A over Federal Budget documents. The question is
     decomposed into sub-questions, each retrieved  (hybrid vector +
@@ -132,8 +168,14 @@ def query(request: QueryRequest):
         sub_questions, parents = gather_context(conn, request.question, top_k=5, usage_log=usage_log)
         raw_answer = generate_answer(request.question, sub_questions, parents, usage_log=usage_log)
         parsed = parse_response(raw_answer, parents)
+
+        client_ip = get_client_ip(http_request)
+        location = resolve_location(client_ip)
+        location["suburb"] = None
+        usage = estimate_cost(usage_log)
+        log_query(conn, request.question, location, location.get("suburb"), usage)
     finally:
         conn.close()
-        
-    parsed["usage"] = estimate_cost(usage_log)
+
+    parsed["usage"] = usage
     return parsed

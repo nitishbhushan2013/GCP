@@ -1,0 +1,14 @@
+{
+  "hosting": {
+    "public": "firebase-public",
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "budgetsense-app-v1",
+          "region": "australia-southeast1"
+        }
+      }
+    ]
+  }
+}

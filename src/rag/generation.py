@@ -86,6 +86,7 @@ def generate_answer(question: str, sub_questions: list[str], parent_sections: li
         usage_log.append({
             "input_tokens": getattr(usage, "prompt_token_count", 0) or 0,
             "output_tokens": getattr(usage, "candidates_token_count", 0) or 0,
+            "thinking_tokens": getattr(usage, "thoughts_token_count", 0) or 0,
         })
     return response.text
 
